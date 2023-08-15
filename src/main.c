@@ -225,11 +225,13 @@ static const char* string_copy(MemMap map) {
     return copy;
 }
 
+static f32 epsilon(f32 x) {
+    return x == 0.0f ? EPSILON : x;
+}
+
 static f32 polar_degrees(Vec2f point) {
-    const f32 degrees = (atanf((point.y == 0.0f ? EPSILON : point.y) /
-                               (point.x == 0.0f ? EPSILON : point.x)) /
-                         PI) *
-                        180.0f;
+    const f32 degrees =
+        (atanf(epsilon(point.y) / epsilon(point.x)) / PI) * 180.0f;
     if (point.x < 0.0f) {
         return 180.0f + degrees;
     }
@@ -253,7 +255,7 @@ static Vec2f turn(Vec2f a, Vec2f b, f32 radians) {
 static Vec2f extend(Vec2f a, Vec2f b, f32 length) {
     const f32 x = b.x - a.x;
     const f32 y = b.y - a.y;
-    const f32 l = sqrtf((x * x) + (y * y));
+    const f32 l = epsilon(sqrtf((x * x) + (y * y)));
     return (Vec2f){
         a.x + (x / l) * length,
         a.y + (y / l) * length,
