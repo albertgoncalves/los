@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+export WD=$PWD
+
+set -euo pipefail
+
+if [ ! -d "$WD/nixGL" ]; then
+    git clone https://github.com/albertgoncalves/nixGL.git
+    (
+        cd "$WD/nixGL"
+        nix-build -A nixGLIntel
+    )
+fi
+
+exports=$(grep "export" < "$WD/nixGL/result/bin/"nixGL*)
+if [ -n "$exports" ]; then
+    eval "$exports"
+fi
+
+set +euo pipefail
+
+export ASAN_OPTIONS="detect_leaks=0"
