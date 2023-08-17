@@ -129,9 +129,15 @@ typedef struct {
 
 #define EPSILON 0.00001f
 
-#define WINDOW_WIDTH    1024
-#define WINDOW_HEIGHT   768
-#define WINDOW_DIAGONAL 1324
+#if 0
+    #define WINDOW_WIDTH    1024
+    #define WINDOW_HEIGHT   768
+    #define WINDOW_DIAGONAL 1324
+#else
+    #define WINDOW_WIDTH    1536
+    #define WINDOW_HEIGHT   768
+    #define WINDOW_DIAGONAL 1718
+#endif
 
 #define VIEW_NEAR -1.0f
 #define VIEW_FAR  1.0f
@@ -140,11 +146,17 @@ typedef struct {
 
 #define COLOR_BACKGROUND ((Vec4f){0.1f, 0.1f, 0.1f, 1.0f})
 
-#define COLOR_TRIANGLE_0 ((Vec4f){0.3f, 0.25f, 0.375f, 0.1f})
-#define COLOR_TRIANGLE_1 ((Vec4f){1.0f, 0.375f, 0.3f, 0.75f})
-#define COLOR_TRIANGLE_2 ((Vec4f){0.375f, 0.3f, 1.0f, 0.75f})
+#if 0
+    #define COLOR_TRIANGLE_0 ((Vec4f){0.3f, 0.25f, 0.375f, 0.1f})
+    #define COLOR_TRIANGLE_1 ((Vec4f){1.0f, 0.375f, 0.3f, 0.75f})
+    #define COLOR_TRIANGLE_2 ((Vec4f){0.375f, 0.3f, 1.0f, 0.75f})
+#else
+    #define COLOR_TRIANGLE_0 ((Vec4f){1.0f, 1.0f, 1.0f, 1.0f})
+    #define COLOR_TRIANGLE_1 COLOR_TRIANGLE_0
+    #define COLOR_TRIANGLE_2 COLOR_TRIANGLE_0
+#endif
 
-#define COLOR_QUAD ((Vec4f){0.75f, 0.75f, 0.75f, 1.0f})
+#define COLOR_QUAD ((Vec4f){0.25f, 0.25f, 0.25f, 1.0f})
 
 #define COLOR_LINE_0 ((Vec4f){0.625f, 0.625f, 0.625f, 0.9f})
 #define COLOR_LINE_1 ((Vec4f){0.5f, 0.5f, 0.5f, 0.275f})
@@ -470,8 +482,13 @@ i32 main(void) {
         {{WINDOW_WIDTH, 0.0f}, {0.0f, WINDOW_HEIGHT}, COLOR_LINE_0},
         {{WINDOW_WIDTH, WINDOW_HEIGHT}, {-WINDOW_WIDTH, 0.0f}, COLOR_LINE_0},
         {{0.0f, WINDOW_HEIGHT}, {0.0f, -WINDOW_HEIGHT}, COLOR_LINE_0},
-        {{WINDOW_WIDTH, 250.0f}, {0}, COLOR_LINE_0},
-        {{WINDOW_WIDTH, WINDOW_HEIGHT - 250.0f}, {0}, COLOR_LINE_0},
+#if 0
+        {{WINDOW_WIDTH, 200.0f}, {0}, COLOR_LINE_0},
+        {{WINDOW_WIDTH, WINDOW_HEIGHT - 200.0f}, {0}, COLOR_LINE_0},
+#else
+        {{WINDOW_WIDTH, WINDOW_HEIGHT}, {0}, COLOR_LINE_0},
+        {{WINDOW_WIDTH, 0.0f}, {0}, COLOR_LINE_0},
+#endif
     };
 
     const u32 program_line = compile_program(PATH_GEOM_VERT, PATH_GEOM_FRAG);
@@ -499,6 +516,9 @@ i32 main(void) {
         {{600.0f, 250.0f}, {10.0f, 150.0f}, COLOR_QUAD},
         {{850.0f, 400.0f}, {5.0f, 300.0f}, COLOR_QUAD},
         {{850.0f, 300.0f}, {100.0f, 5.0f}, COLOR_QUAD},
+        {{1200.0f, 150.0f}, {5.0f, 50.0f}, COLOR_QUAD},
+        {{1150.0f, 225.0f}, {25.0f, 25.0f}, COLOR_QUAD},
+        {{1175.0f, 650.0f}, {5.0f, 75.0f}, COLOR_QUAD},
     };
 #define LEN_QUADS (sizeof(quads) / sizeof(quads[0]))
 
@@ -761,6 +781,7 @@ i32 main(void) {
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(triangles), &triangles[0]);
         glDrawArrays(GL_TRIANGLES, 0, (i32)(len_triangles * 3));
 
+#if 0
         glUseProgram(program_line);
         glBindVertexArray(vao[0]);
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo[0]);
@@ -769,6 +790,7 @@ i32 main(void) {
                               0,
                               sizeof(vertices_line) / sizeof(vertices_line[0]),
                               (i32)len_lines);
+#endif
 
         glfwSwapBuffers(window);
 
