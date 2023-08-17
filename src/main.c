@@ -567,15 +567,15 @@ i32 main(void) {
         {
             f32 angle = fov[1] - fov[0];
             if (180.0f < angle) {
-                EXIT();
-            } else if (angle < -180.0f) {
-                angle = angle + 360.0f;
+                angle -= 360.0f;
+            }
+            if (angle < -180.0f) {
+                angle += 360.0f;
             }
             if (angle < 0.0f) {
                 const f32 degrees = fov[1];
                 fov[1] = fov[0];
                 fov[0] = degrees;
-                angle = -angle;
             }
             if (fov[1] < fov[0]) {
                 fov[0] -= 360.0f;
