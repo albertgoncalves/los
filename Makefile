@@ -1,6 +1,7 @@
 MAKEFLAGS += --silent
 CC = mold -run clang
 CFLAGS = \
+	-D_DEFAULT_SOURCE \
 	-ferror-limit=1 \
 	-fsanitize=bounds \
 	-fsanitize=float-divide-by-zero \

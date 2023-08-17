@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #define GL_GLEXT_PROTOTYPES
@@ -12,11 +13,14 @@
 #include <GLFW/glfw3.h>
 
 typedef uint32_t u32;
+typedef uint64_t u64;
 typedef int32_t  i32;
 typedef float    f32;
 typedef double   f64;
 
 typedef struct stat FileStat;
+
+typedef struct timespec Time;
 
 typedef enum {
     FALSE = 0,
@@ -70,6 +74,8 @@ typedef struct {
 
 #define OK    0
 #define ERROR 1
+
+#define NANOS_PER_SECOND 1000000000
 
 #define ATTRIBUTE(x) __attribute__((x))
 
@@ -195,6 +201,12 @@ static u32  LEN_BUFFER = 0;
         glVertexAttribDivisor(index, 1);                            \
         EXIT_IF_GL_ERROR();                                         \
     } while (FALSE)
+
+static u64 now(void) {
+    Time time;
+    EXIT_IF(clock_gettime(CLOCK_MONOTONIC, &time));
+    return ((u64)time.tv_sec * NANOS_PER_SECOND) + (u64)time.tv_nsec;
+}
 
 static MemMap string_open(const char* path) {
     EXIT_IF(!path);
@@ -531,8 +543,27 @@ i32 main(void) {
                        &projection.column_row[0][0]);
     EXIT_IF_GL_ERROR();
 
-    putchar('\n');
+    u64 time[2] = {now()};
+    u64 frames = 0;
+
+    printf("\n\n");
     while (!glfwWindowShouldClose(window)) {
+        {
+            time[1] = now();
+            const u64 elapsed = time[1] - time[0];
+            if (NANOS_PER_SECOND <= elapsed) {
+                const f64 nanoseconds_per_frame =
+                    ((f64)elapsed) / ((f64)frames);
+                printf("\033[2A"
+                       "%9.0f ns/f\n"
+                       "%9lu frames\n",
+                       nanoseconds_per_frame,
+                       frames);
+                time[0] = time[1];
+                frames = 0;
+            }
+        }
+
         glfwPollEvents();
 
         Vec2d cursor_f64;
@@ -631,7 +662,6 @@ i32 main(void) {
                        WINDOW_DIAGONAL);
             ++len_points;
         }
-        printf("\033[1A%4u\n", len_points);
 
         for (u32 i = 0; i < len_points; ++i) {
             Vec2f a[2] = {cursor_f32, points[i]};
@@ -741,6 +771,8 @@ i32 main(void) {
                               (i32)len_lines);
 
         glfwSwapBuffers(window);
+
+        ++frames;
     }
 
     glDeleteVertexArrays(CAP_VAO, &vao[0]);
