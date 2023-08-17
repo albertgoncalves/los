@@ -676,13 +676,13 @@ i32 main(void) {
             }
         }
 
-        for (u32 i = 0; i < len_points; ++i) {
-            for (u32 j = i + 1; j < len_points; ++j) {
+        for (u32 i = 1; i < len_points; ++i) {
+            for (u32 j = i; 0 < j; --j) {
                 f32 angle =
                     polar_degrees((Vec2f){points[j].x - cursor_f32.x,
                                           points[j].y - cursor_f32.y}) -
-                    polar_degrees((Vec2f){points[i].x - cursor_f32.x,
-                                          points[i].y - cursor_f32.y});
+                    polar_degrees((Vec2f){points[j - 1].x - cursor_f32.x,
+                                          points[j - 1].y - cursor_f32.y});
                 if (angle < -180.0f) {
                     angle += 360.0f;
                 }
@@ -691,10 +691,11 @@ i32 main(void) {
                 }
 
                 if (angle < 0.0f) {
-                    const Vec2f point = points[i];
-                    points[i] = points[j];
-                    points[j] = point;
+                    break;
                 }
+                const Vec2f point = points[j - 1];
+                points[j - 1] = points[j];
+                points[j] = point;
             }
         }
 
