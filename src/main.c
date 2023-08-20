@@ -276,13 +276,22 @@ static Vec2f turn(Vec2f a, Vec2f b, f32 radians) {
     };
 }
 
-static Vec2f extend(Vec2f a, Vec2f b, f32 length) {
-    const f32 x = b.x - a.x;
-    const f32 y = b.y - a.y;
-    const f32 l = epsilon(sqrtf((x * x) + (y * y)));
+static Vec2f normalize(Vec2f v) {
+    const f32 l = epsilon(sqrtf((v.x * v.x) + (v.y * v.y)));
     return (Vec2f){
-        a.x + (x / l) * length,
-        a.y + (y / l) * length,
+        .x = v.x / l,
+        .y = v.y / l,
+    };
+}
+
+static Vec2f extend(Vec2f a, Vec2f b, f32 length) {
+    const Vec2f c = normalize((Vec2f){
+        b.x - a.x,
+        b.y - a.y,
+    });
+    return (Vec2f){
+        a.x + (c.x * length),
+        a.y + (c.y * length),
     };
 }
 
@@ -303,7 +312,7 @@ static Mat4 orthographic(f32 left,
     };
 }
 
-static void intersection(const Vec2f a[2], const Vec2f b[2], Vec2f* point) {
+static void intersect(const Vec2f a[2], const Vec2f b[2], Vec2f* point) {
     const f32 x0 = a[0].x - a[1].x;
     const f32 y0 = a[0].y - a[1].y;
 
@@ -319,7 +328,7 @@ static void intersection(const Vec2f a[2], const Vec2f b[2], Vec2f* point) {
     }
     const f32 t = ((x1 * y2) - (y1 * x2)) / denominator;
     const f32 u = -((x0 * y1) - (y0 * x1)) / denominator;
-    if (!((0.0f <= t) && (t <= 1.0f) && (0.0f <= u) && (u <= 1.0f))) {
+    if ((t < 0.0f) || (1.0f < t) || (u < 0.0f) || (1.0f < u)) {
         return;
     }
     point->x = a[0].x + (t * (a[1].x - a[0].x));
@@ -695,25 +704,25 @@ i32 main(void) {
                     quads[j].translate.x + w,
                     quads[j].translate.y,
                 };
-                intersection(a, b, &points[i]);
+                intersect(a, b, &points[i]);
 
                 a[1] = points[i];
                 b[0] = (Vec2f){
                     quads[j].translate.x + w,
                     quads[j].translate.y + h,
                 };
-                intersection(a, b, &points[i]);
+                intersect(a, b, &points[i]);
 
                 a[1] = points[i];
                 b[1] = (Vec2f){
                     quads[j].translate.x,
                     quads[j].translate.y + h,
                 };
-                intersection(a, b, &points[i]);
+                intersect(a, b, &points[i]);
 
                 a[1] = points[i];
                 b[0] = quads[j].translate;
-                intersection(a, b, &points[i]);
+                intersect(a, b, &points[i]);
             }
             for (u32 j = 0; j < 4; ++j) {
                 a[1] = points[i];
