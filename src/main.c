@@ -716,30 +716,25 @@ i32 main(void) {
         for (u32 i = 4; i < len_lines; ++i) {
             EXIT_IF(CAP_POINTS <= (len_points + 2));
             points[len_points++] = lines[i].translate;
-
-            points[len_points] =
+            points[len_points++] =
                 extend(look_from,
-                       turn(look_from, points[len_points - 1], -EPSILON),
+                       turn(look_from, lines[i].translate, -EPSILON),
                        WINDOW_DIAGONAL);
-            ++len_points;
-            points[len_points] =
+            points[len_points++] =
                 extend(look_from,
-                       turn(look_from, points[len_points - 2], EPSILON),
+                       turn(look_from, lines[i].translate, EPSILON),
                        WINDOW_DIAGONAL);
-            ++len_points;
         }
 
         for (u32 i = 0; i < len_points; ++i) {
             Vec2f a[2] = {look_from, points[i]};
-            Vec2f b[2];
             for (u32 j = 0; j < LEN_QUADS; ++j) {
                 const f32 w = quads[j].scale.x;
                 const f32 h = quads[j].scale.y;
 
-                b[0] = quads[j].translate;
-                b[1] = (Vec2f){
-                    quads[j].translate.x + w,
-                    quads[j].translate.y,
+                Vec2f b[2] = {
+                    quads[j].translate,
+                    {quads[j].translate.x + w, quads[j].translate.y},
                 };
                 intersect(a, b, &points[i]);
 
@@ -763,10 +758,12 @@ i32 main(void) {
             }
             for (u32 j = 0; j < 4; ++j) {
                 a[1] = points[i];
-                b[0] = lines[j].translate;
-                b[1] = (Vec2f){
-                    lines[j].translate.x + lines[j].scale.x,
-                    lines[j].translate.y + lines[j].scale.y,
+                const Vec2f b[2] = {
+                    lines[j].translate,
+                    {
+                        lines[j].translate.x + lines[j].scale.x,
+                        lines[j].translate.y + lines[j].scale.y,
+                    },
                 };
                 intersect(a, b, &points[i]);
             }
