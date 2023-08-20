@@ -804,6 +804,22 @@ i32 main(void) {
                 {points[i], COLOR_TRIANGLE_2},
             }};
         }
+        for (u32 i = 0; i < len_triangles; ++i) {
+            for (u32 j = 1; j < 3; ++j) {
+                const f32 x = triangles[i].points[j].translate.x -
+                              triangles[i].points[0].translate.x;
+                const f32 y = triangles[i].points[j].translate.y -
+                              triangles[i].points[0].translate.y;
+                f32 t = sqrtf((x * x) + (y * y)) / WINDOW_DIAGONAL;
+                if (1.0f < t) {
+                    t = 1.0f;
+                } else if (t < 0.0f) {
+                    t = 0.0f;
+                }
+                const f32 alpha = 1.0f + -t;
+                triangles[i].points[j].color.w = alpha;
+            }
+        }
 
         glClear(GL_COLOR_BUFFER_BIT);
 
