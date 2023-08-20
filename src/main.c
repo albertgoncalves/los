@@ -163,9 +163,9 @@ typedef struct {
 
 #define CAP_BUFFER (1 << 12)
 
-#define CAP_LINES     (1 << 8)
-#define CAP_TRIANGLES (1 << 8)
-#define CAP_POINTS    (1 << 8)
+#define CAP_LINES     (1 << 7)
+#define CAP_TRIANGLES (1 << 7)
+#define CAP_POINTS    (1 << 7)
 
 #define CAP_VAO          3
 #define CAP_VBO          3
