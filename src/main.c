@@ -491,13 +491,6 @@ i32 main(void) {
         {{WINDOW_WIDTH, 0.0f}, {0.0f, WINDOW_HEIGHT}, COLOR_LINE_0},
         {{WINDOW_WIDTH, WINDOW_HEIGHT}, {-WINDOW_WIDTH, 0.0f}, COLOR_LINE_0},
         {{0.0f, WINDOW_HEIGHT}, {0.0f, -WINDOW_HEIGHT}, COLOR_LINE_0},
-#if 0
-        {{WINDOW_WIDTH, 200.0f}, {0}, COLOR_LINE_0},
-        {{WINDOW_WIDTH, WINDOW_HEIGHT - 200.0f}, {0}, COLOR_LINE_0},
-#else
-        {{WINDOW_WIDTH, WINDOW_HEIGHT}, {0}, COLOR_LINE_0},
-        {{WINDOW_WIDTH, 0.0f}, {0}, COLOR_LINE_0},
-#endif
     };
 
     const u32 program_line = compile_program(PATH_GEOM_VERT, PATH_GEOM_FRAG);
@@ -572,6 +565,9 @@ i32 main(void) {
                        &projection.column_row[0][0]);
     EXIT_IF_GL_ERROR();
 
+    Vec2f position = {WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f};
+    Vec2f speed = {0};
+
     u64 time[2] = {now()};
     u64 frames = 0;
 
@@ -595,33 +591,69 @@ i32 main(void) {
 
         glfwPollEvents();
 
-        Vec2d cursor_f64;
-        glfwGetCursorPos(window, &cursor_f64.x, &cursor_f64.y);
-        const Vec2f cursor_f32 = {
-            .x = (f32)cursor_f64.x,
-            .y = (f32)cursor_f64.y,
+        Vec2f move = {0};
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            move.y -= 1.0f;
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            move.y += 1.0f;
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            move.x -= 1.0f;
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            move.x += 1.0f;
+        }
+        move = normalize(move);
+
+#define RUN 3.75f
+        speed.x += move.x * RUN;
+        speed.y += move.y * RUN;
+#undef RUN
+#define FRICTION 0.7875f
+        speed.x *= FRICTION;
+        speed.y *= FRICTION;
+#undef FRICTION
+        position.x += speed.x;
+        position.y += speed.y;
+
+        Vec2d cursor;
+        glfwGetCursorPos(window, &cursor.x, &cursor.y);
+        const Vec2f look_to = (Vec2f){
+            .x = (f32)cursor.x,
+            .y = (f32)cursor.y,
         };
 
-        u32 len_triangles = 0;
-        EXIT_IF(CAP_TRIANGLES <= len_triangles);
-        triangles[len_triangles++] = (Triangle){{
-            {cursor_f32, COLOR_TRIANGLE_0},
-            {lines[4].translate, COLOR_TRIANGLE_1},
-            {lines[5].translate, COLOR_TRIANGLE_2},
-        }};
+        const Vec2f look_from = extend(position, look_to, 25.0f);
+
+#define FOV (PI / 4.0f)
+        Vec2f target[2] = {
+            extend(look_from,
+                   turn(look_from, look_to, -(FOV / 2.0f)),
+                   WINDOW_DIAGONAL),
+            extend(look_from,
+                   turn(look_from, look_to, FOV / 2.0f),
+                   WINDOW_DIAGONAL),
+        };
+#undef FOV
+
+        u32 len_lines = 6;
+        EXIT_IF(CAP_LINES < len_lines);
+        lines[4].translate = target[0];
+        lines[5].translate = target[1];
+        for (u32 i = 4; i < 6; ++i) {
+            lines[i].scale.x = look_from.x - lines[i].translate.x;
+            lines[i].scale.y = look_from.y - lines[i].translate.y;
+        }
 
         f32 fov[2] = {
             polar_degrees((Vec2f){
-                triangles[0].points[1].translate.x -
-                    triangles[0].points[0].translate.x,
-                triangles[0].points[1].translate.y -
-                    triangles[0].points[0].translate.y,
+                target[0].x - look_from.x,
+                target[0].y - look_from.y,
             }),
             polar_degrees((Vec2f){
-                triangles[0].points[2].translate.x -
-                    triangles[0].points[0].translate.x,
-                triangles[0].points[2].translate.y -
-                    triangles[0].points[0].translate.y,
+                target[1].x - look_from.x,
+                target[1].y - look_from.y,
             }),
         };
         {
@@ -642,27 +674,32 @@ i32 main(void) {
             }
         }
 
-        u32 len_lines = 6;
-
-#define LINE_BETWEEN(x0, y0)                                              \
-    do {                                                                  \
-        f32 degrees =                                                     \
-            polar_degrees((Vec2f){(x0)-cursor_f32.x, (y0)-cursor_f32.y}); \
-        Bool inside = FALSE;                                              \
-        if ((fov[0] <= degrees) && (degrees <= fov[1])) {                 \
-            inside |= TRUE;                                               \
-        }                                                                 \
-        degrees -= 360.0f;                                                \
-        if ((fov[0] <= degrees) && (degrees <= fov[1])) {                 \
-            inside |= TRUE;                                               \
-        }                                                                 \
-        if (!inside) {                                                    \
-            break;                                                        \
-        }                                                                 \
-        EXIT_IF(CAP_LINES <= len_lines);                                  \
-        lines[len_lines++] = (Geom){{x0, y0}, {0}, COLOR_LINE_1};         \
+#define LINE_BETWEEN(x0, y0)                                            \
+    do {                                                                \
+        f32 degrees =                                                   \
+            polar_degrees((Vec2f){(x0)-look_from.x, (y0)-look_from.y}); \
+        Bool inside = FALSE;                                            \
+        if ((fov[0] <= degrees) && (degrees <= fov[1])) {               \
+            inside |= TRUE;                                             \
+        }                                                               \
+        degrees -= 360.0f;                                              \
+        if ((fov[0] <= degrees) && (degrees <= fov[1])) {               \
+            inside |= TRUE;                                             \
+        }                                                               \
+        if (!inside) {                                                  \
+            break;                                                      \
+        }                                                               \
+        EXIT_IF(CAP_LINES <= len_lines);                                \
+        lines[len_lines++] = (Geom){                                    \
+            {x0, y0},                                                   \
+            {look_from.x - (x0), look_from.y - (y0)},                   \
+            COLOR_LINE_1,                                               \
+        };                                                              \
     } while (FALSE)
 
+        for (u32 i = 0; i < 4; ++i) {
+            LINE_BETWEEN(lines[i].translate.x, lines[i].translate.y);
+        }
         for (u32 i = 0; i < LEN_QUADS; ++i) {
             const f32 w = quads[i].scale.x;
             const f32 h = quads[i].scale.y;
@@ -677,23 +714,23 @@ i32 main(void) {
 
         u32 len_points = 0;
         for (u32 i = 4; i < len_lines; ++i) {
-            EXIT_IF(CAP_POINTS <= len_points);
+            EXIT_IF(CAP_POINTS <= (len_points + 2));
             points[len_points++] = lines[i].translate;
 
             points[len_points] =
-                extend(cursor_f32,
-                       turn(cursor_f32, points[len_points - 1], -EPSILON),
+                extend(look_from,
+                       turn(look_from, points[len_points - 1], -EPSILON),
                        WINDOW_DIAGONAL);
             ++len_points;
             points[len_points] =
-                extend(cursor_f32,
-                       turn(cursor_f32, points[len_points - 2], EPSILON),
+                extend(look_from,
+                       turn(look_from, points[len_points - 2], EPSILON),
                        WINDOW_DIAGONAL);
             ++len_points;
         }
 
         for (u32 i = 0; i < len_points; ++i) {
-            Vec2f a[2] = {cursor_f32, points[i]};
+            Vec2f a[2] = {look_from, points[i]};
             Vec2f b[2];
             for (u32 j = 0; j < LEN_QUADS; ++j) {
                 const f32 w = quads[j].scale.x;
@@ -731,17 +768,17 @@ i32 main(void) {
                     lines[j].translate.x + lines[j].scale.x,
                     lines[j].translate.y + lines[j].scale.y,
                 };
-                intersection(a, b, &points[i]);
+                intersect(a, b, &points[i]);
             }
         }
 
         for (u32 i = 1; i < len_points; ++i) {
             for (u32 j = i; 0 < j; --j) {
                 f32 angle =
-                    polar_degrees((Vec2f){points[j].x - cursor_f32.x,
-                                          points[j].y - cursor_f32.y}) -
-                    polar_degrees((Vec2f){points[j - 1].x - cursor_f32.x,
-                                          points[j - 1].y - cursor_f32.y});
+                    polar_degrees((Vec2f){points[j].x - look_from.x,
+                                          points[j].y - look_from.y}) -
+                    polar_degrees((Vec2f){points[j - 1].x - look_from.x,
+                                          points[j - 1].y - look_from.y});
                 if (angle < -180.0f) {
                     angle += 360.0f;
                 }
@@ -758,19 +795,14 @@ i32 main(void) {
             }
         }
 
-        len_triangles = 0;
+        u32 len_triangles = 0;
         for (u32 i = 1; i < len_points; ++i) {
             EXIT_IF(CAP_TRIANGLES <= len_triangles);
             triangles[len_triangles++] = (Triangle){{
-                {cursor_f32, COLOR_TRIANGLE_0},
+                {look_from, COLOR_TRIANGLE_0},
                 {points[i - 1], COLOR_TRIANGLE_1},
                 {points[i], COLOR_TRIANGLE_2},
             }};
-        }
-
-        for (u32 i = 4; i < len_lines; ++i) {
-            lines[i].scale.x = cursor_f32.x - lines[i].translate.x;
-            lines[i].scale.y = cursor_f32.y - lines[i].translate.y;
         }
 
         glClear(GL_COLOR_BUFFER_BIT);
