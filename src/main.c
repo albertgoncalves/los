@@ -139,12 +139,14 @@ typedef struct {
     #define WINDOW_DIAGONAL 1718
 #endif
 
+#define MULTISAMPLES 16
+
 #define VIEW_NEAR -1.0f
 #define VIEW_FAR  1.0f
 
 #define LINE_WIDTH 1.825f
 
-#define COLOR_BACKGROUND ((Vec4f){0.1f, 0.1f, 0.1f, 1.0f})
+#define COLOR_BACKGROUND ((Vec4f){0})
 
 #if 0
     #define COLOR_TRIANGLE_0 ((Vec4f){0.3f, 0.25f, 0.375f, 0.1f})
@@ -167,15 +169,20 @@ typedef struct {
 #define CAP_TRIANGLES (1 << 7)
 #define CAP_POINTS    (1 << 7)
 
-#define CAP_VAO          3
-#define CAP_VBO          3
+#define CAP_VAO          4
+#define CAP_VBO          4
 #define CAP_INSTANCE_VBO 2
+#define CAP_FBO          2
+#define CAP_TEXTURES     2
 
 #define PATH_GEOM_VERT "src/geom_vert.glsl"
 #define PATH_GEOM_FRAG "src/geom_frag.glsl"
 
 #define PATH_TRIANGLE_VERT "src/triangle_vert.glsl"
 #define PATH_TRIANGLE_FRAG "src/triangle_frag.glsl"
+
+#define PATH_SHADOW_VERT "src/shadow_vert.glsl"
+#define PATH_SHADOW_FRAG "src/shadow_frag.glsl"
 
 static char BUFFER[CAP_BUFFER];
 static u32  LEN_BUFFER = 0;
@@ -454,7 +461,7 @@ i32 main(void) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, FALSE);
-    glfwWindowHint(GLFW_SAMPLES, 16);
+    glfwWindowHint(GLFW_SAMPLES, MULTISAMPLES);
     GLFWwindow* window =
         glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, __FILE__, NULL, NULL);
     EXIT_IF(!window);
@@ -514,6 +521,7 @@ i32 main(void) {
     };
 
     Geom quads[] = {
+        {{0}, {WINDOW_WIDTH, WINDOW_HEIGHT}, {0.0f, 1.0f, 1.0f, 1.0f}},
         {{400.0f, 400.0f}, {25.0f, 100.0f}, COLOR_QUAD},
         {{600.0f, 250.0f}, {10.0f, 150.0f}, COLOR_QUAD},
         {{850.0f, 400.0f}, {5.0f, 300.0f}, COLOR_QUAD},
@@ -563,6 +571,75 @@ i32 main(void) {
                        1,
                        FALSE,
                        &projection.column_row[0][0]);
+    EXIT_IF_GL_ERROR();
+
+    const Vec2f shadow[] = {
+        {WINDOW_WIDTH, WINDOW_HEIGHT},
+        {WINDOW_WIDTH, 0.0f},
+        {0.0f, WINDOW_HEIGHT},
+        {0.0f, 0.0f},
+    };
+#define LEN_SHADOWS (sizeof(shadow) / sizeof(shadow[0]))
+
+    const u32 program_shadow =
+        compile_program(PATH_SHADOW_VERT, PATH_SHADOW_FRAG);
+    glUseProgram(program_shadow);
+    glBindVertexArray(vao[3]);
+    BIND_BUFFER(vbo[3],
+                shadow,
+                sizeof(shadow),
+                GL_ARRAY_BUFFER,
+                GL_DYNAMIC_DRAW);
+    SET_VERTEX_ATTRIB(program_shadow,
+                      "VERT_IN_POSITION",
+                      2,
+                      sizeof(Vec2f),
+                      offsetof(Vec2f, x));
+    glUniformMatrix4fv(glGetUniformLocation(program_shadow, "PROJECTION"),
+                       1,
+                       FALSE,
+                       &projection.column_row[0][0]);
+    EXIT_IF_GL_ERROR();
+
+    u32 textures[CAP_TEXTURES];
+    glGenTextures(CAP_TEXTURES, &textures[0]);
+    for (u32 i = 0; i < CAP_TEXTURES; ++i) {
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[i]);
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
+                                MULTISAMPLES,
+                                GL_RGBA8,
+                                WINDOW_WIDTH,
+                                WINDOW_HEIGHT,
+                                FALSE);
+    }
+
+    u32 fbo[CAP_FBO];
+    glGenFramebuffers(CAP_FBO, &fbo[0]);
+    for (u32 i = 0; i < CAP_FBO; ++i) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER,
+                               GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D_MULTISAMPLE,
+                               textures[i],
+                               0);
+    }
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        EXIT_IF_GL_ERROR();
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[0]);
+    glUniform1i(glGetUniformLocation(program_shadow, "TEXTURE"), 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[1]);
+    glUniform1i(glGetUniformLocation(program_shadow, "MASK"), 1);
+
+    const i32 uniform_blend = glGetUniformLocation(program_shadow, "BLEND");
+    glUniform1i(glGetUniformLocation(program_shadow, "MULTISAMPLES"),
+                MULTISAMPLES);
+
     EXIT_IF_GL_ERROR();
 
     Vec2f position = {WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f};
@@ -625,6 +702,14 @@ i32 main(void) {
         };
 
         const Vec2f look_from = extend(position, look_to, 25.0f);
+
+        f32 blend = look_from.x / WINDOW_WIDTH;
+        if (blend < 0.0f) {
+            blend = 0.0f;
+        }
+        if (1.0f < blend) {
+            blend = 1.0f;
+        }
 
 #define FOV_RADIANS ((70.0f * PI) / 180.0f)
         Vec2f target[2] = {
@@ -700,7 +785,7 @@ i32 main(void) {
         for (u32 i = 0; i < 4; ++i) {
             LINE_BETWEEN(lines[i].translate.x, lines[i].translate.y);
         }
-        for (u32 i = 0; i < LEN_QUADS; ++i) {
+        for (u32 i = 1; i < LEN_QUADS; ++i) {
             const f32 w = quads[i].scale.x;
             const f32 h = quads[i].scale.y;
 
@@ -728,7 +813,7 @@ i32 main(void) {
 
         for (u32 i = 0; i < len_points; ++i) {
             Vec2f a[2] = {look_from, points[i]};
-            for (u32 j = 0; j < LEN_QUADS; ++j) {
+            for (u32 j = 1; j < LEN_QUADS; ++j) {
                 const f32 w = quads[j].scale.x;
                 const f32 h = quads[j].scale.y;
 
@@ -818,22 +903,31 @@ i32 main(void) {
             }
         }
 
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo[0]);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(program_quad);
         glBindVertexArray(vao[1]);
+#if 0
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo[1]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quads), &quads[0]);
+#endif
         glDrawArraysInstanced(GL_TRIANGLE_STRIP,
                               0,
                               sizeof(vertices_quad) / sizeof(vertices_quad[0]),
                               (i32)LEN_QUADS);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(program_triangles);
         glBindVertexArray(vao[2]);
         glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(triangles), &triangles[0]);
         glDrawArrays(GL_TRIANGLES, 0, (i32)(len_triangles * 3));
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
 
 #if 0
         glUseProgram(program_line);
@@ -846,18 +940,26 @@ i32 main(void) {
                               (i32)len_lines);
 #endif
 
+        glUseProgram(program_shadow);
+        glBindVertexArray(vao[3]);
+        glUniform1f(uniform_blend, blend);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, LEN_SHADOWS);
+
         glfwSwapBuffers(window);
 
         ++frames;
     }
 
-    glDeleteVertexArrays(CAP_VAO, &vao[0]);
-    glDeleteBuffers(CAP_VBO, &vbo[0]);
+    glDeleteTextures(CAP_TEXTURES, &textures[0]);
+    glDeleteFramebuffers(CAP_FBO, &fbo[0]);
     glDeleteBuffers(CAP_INSTANCE_VBO, &instance_vbo[0]);
+    glDeleteBuffers(CAP_VBO, &vbo[0]);
+    glDeleteVertexArrays(CAP_VAO, &vao[0]);
 
     glDeleteProgram(program_line);
     glDeleteProgram(program_quad);
     glDeleteProgram(program_triangles);
+    glDeleteProgram(program_shadow);
 
     return OK;
 }
