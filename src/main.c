@@ -626,16 +626,16 @@ i32 main(void) {
 
         const Vec2f look_from = extend(position, look_to, 25.0f);
 
-#define FOV (PI / 4.0f)
+#define FOV_RADIANS ((70.0f * PI) / 180.0f)
         Vec2f target[2] = {
             extend(look_from,
-                   turn(look_from, look_to, -(FOV / 2.0f)),
+                   turn(look_from, look_to, -(FOV_RADIANS / 2.0f)),
                    WINDOW_DIAGONAL),
             extend(look_from,
-                   turn(look_from, look_to, FOV / 2.0f),
+                   turn(look_from, look_to, FOV_RADIANS / 2.0f),
                    WINDOW_DIAGONAL),
         };
-#undef FOV
+#undef FOV_RADIANS
 
         u32 len_lines = 6;
         EXIT_IF(CAP_LINES < len_lines);
