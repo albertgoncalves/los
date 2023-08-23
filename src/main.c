@@ -144,6 +144,18 @@ typedef struct {
 #define VIEW_NEAR -1.0f
 #define VIEW_FAR  1.0f
 
+#if 0
+    #define VIEW_TRANSLATE                            \
+        ((Vec2f){                                     \
+            WINDOW_WIDTH - (WINDOW_HEIGHT / 2.0f),    \
+            -((WINDOW_WIDTH - WINDOW_HEIGHT) / 2.0f), \
+        })
+    #define VIEW_ROTATE_RADIANS ((90.0f * PI) / 180.0f)
+#else
+    #define VIEW_TRANSLATE      ((Vec2f){0})
+    #define VIEW_ROTATE_RADIANS 0
+#endif
+
 #define LINE_WIDTH 1.825f
 
 #define COLOR_BACKGROUND ((Vec4f){0})
@@ -302,6 +314,21 @@ static Vec2f extend(Vec2f a, Vec2f b, f32 length) {
     };
 }
 
+static Mat4 translate_rotate(Vec2f translate, f32 rotate_radians) {
+    const f32 s = sinf(rotate_radians);
+    const f32 c = cosf(rotate_radians);
+    return (Mat4){
+        .column_row[0][0] = c,
+        .column_row[0][1] = s,
+        .column_row[1][0] = -s,
+        .column_row[1][1] = c,
+        .column_row[2][2] = 1.0f,
+        .column_row[3][0] = translate.x,
+        .column_row[3][1] = translate.y,
+        .column_row[3][3] = 1.0f,
+    };
+}
+
 static Mat4 orthographic(f32 left,
                          f32 right,
                          f32 bottom,
@@ -414,7 +441,8 @@ static void init_geom(u32          program,
                       u32          size_vertices,
                       const Geom*  geoms,
                       u32          size_geoms,
-                      const Mat4*  projection) {
+                      const Mat4*  projection,
+                      const Mat4*  view) {
     glUseProgram(program);
     glBindVertexArray(vao);
 
@@ -450,6 +478,10 @@ static void init_geom(u32          program,
                        1,
                        FALSE,
                        &projection->column_row[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(program, "VIEW"),
+                       1,
+                       FALSE,
+                       &view->column_row[0][0]);
     EXIT_IF_GL_ERROR();
 }
 
@@ -481,6 +513,7 @@ i32 main(void) {
 
     const Mat4 projection =
         orthographic(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, VIEW_NEAR, VIEW_FAR);
+    const Mat4 view = translate_rotate(VIEW_TRANSLATE, VIEW_ROTATE_RADIANS);
 
     u32 vao[CAP_VAO];
     glGenVertexArrays(CAP_VAO, &vao[0]);
@@ -509,7 +542,8 @@ i32 main(void) {
               sizeof(vertices_line),
               lines,
               sizeof(lines),
-              &projection);
+              &projection,
+              &view);
     glLineWidth(LINE_WIDTH);
     glEnable(GL_LINE_SMOOTH);
 
@@ -541,7 +575,8 @@ i32 main(void) {
               sizeof(vertices_quad),
               quads,
               sizeof(quads),
-              &projection);
+              &projection,
+              &view);
 
     Triangle triangles[CAP_TRIANGLES];
 
@@ -571,6 +606,10 @@ i32 main(void) {
                        1,
                        FALSE,
                        &projection.column_row[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(program_triangles, "VIEW"),
+                       1,
+                       FALSE,
+                       &view.column_row[0][0]);
     EXIT_IF_GL_ERROR();
 
     const Vec2f shadow[] = {
@@ -599,6 +638,10 @@ i32 main(void) {
                        1,
                        FALSE,
                        &projection.column_row[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(program_shadow, "VIEW"),
+                       1,
+                       FALSE,
+                       &view.column_row[0][0]);
     EXIT_IF_GL_ERROR();
 
     u32 textures[CAP_TEXTURES];
@@ -681,7 +724,7 @@ i32 main(void) {
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
             move.x += 1.0f;
         }
-        move = normalize(move);
+        move = normalize(turn((Vec2f){0}, move, VIEW_ROTATE_RADIANS));
 
 #define RUN 3.75f
         speed.x += move.x * RUN;
@@ -696,10 +739,11 @@ i32 main(void) {
 
         Vec2d cursor;
         glfwGetCursorPos(window, &cursor.x, &cursor.y);
-        const Vec2f look_to = (Vec2f){
-            .x = (f32)cursor.x,
-            .y = (f32)cursor.y,
-        };
+
+        Vec2f look_to = (Vec2f){(f32)cursor.x, (f32)cursor.y};
+        look_to.x -= VIEW_TRANSLATE.x;
+        look_to.y -= VIEW_TRANSLATE.y;
+        look_to = turn((Vec2f){0}, look_to, VIEW_ROTATE_RADIANS);
 
         const Vec2f look_from = extend(position, look_to, 25.0f);
 
