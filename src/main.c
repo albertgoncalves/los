@@ -130,9 +130,9 @@ typedef struct {
 #define EPSILON 0.00001f
 
 #if 0
-    #define WINDOW_WIDTH    1024
-    #define WINDOW_HEIGHT   768
-    #define WINDOW_DIAGONAL 1324
+    #define WINDOW_WIDTH    2500
+    #define WINDOW_HEIGHT   1150
+    #define WINDOW_DIAGONAL 2752
 #else
     #define WINDOW_WIDTH    1536
     #define WINDOW_HEIGHT   768
