@@ -144,13 +144,9 @@ typedef struct {
 #define VIEW_NEAR -1.0f
 #define VIEW_FAR  1.0f
 
-#if 0
-    #define VIEW_TRANSLATE                            \
-        ((Vec2f){                                     \
-            WINDOW_WIDTH - (WINDOW_HEIGHT / 2.0f),    \
-            -((WINDOW_WIDTH - WINDOW_HEIGHT) / 2.0f), \
-        })
-    #define VIEW_ROTATE_RADIANS ((90.0f * PI) / 180.0f)
+#if 1
+    #define VIEW_TRANSLATE      ((Vec2f){WINDOW_WIDTH, WINDOW_HEIGHT})
+    #define VIEW_ROTATE_RADIANS ((180.0f * PI) / 180.0f)
 #else
     #define VIEW_TRANSLATE      ((Vec2f){0})
     #define VIEW_ROTATE_RADIANS 0
