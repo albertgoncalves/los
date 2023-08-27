@@ -47,6 +47,7 @@ typedef struct {
     Vec2f translate;
     Vec2f scale;
     Vec4f color;
+    f32   rotate_radians;
 } Geom;
 
 typedef struct {
@@ -166,7 +167,8 @@ typedef struct {
     #define COLOR_TRIANGLE_2 COLOR_TRIANGLE_0
 #endif
 
-#define COLOR_QUAD ((Vec4f){0.25f, 0.25f, 0.25f, 1.0f})
+#define COLOR_OBJECT ((Vec4f){0.25f, 0.25f, 0.25f, 1.0f})
+#define COLOR_WORLD  ((Vec4f){0.0f, 1.0f, 1.0f, 1.0f})
 
 #define COLOR_LINE_0 ((Vec4f){0.625f, 0.625f, 0.625f, 0.9f})
 #define COLOR_LINE_1 ((Vec4f){0.5f, 0.5f, 0.5f, 0.275f})
@@ -174,6 +176,7 @@ typedef struct {
 #define CAP_BUFFER (1 << 12)
 
 #define CAP_LINES     (1 << 7)
+#define CAP_QUADS     (1 << 7)
 #define CAP_TRIANGLES (1 << 7)
 #define CAP_POINTS    (1 << 7)
 
@@ -469,6 +472,11 @@ static void init_geom(u32          program,
                           4,
                           sizeof(Geom),
                           offsetof(Geom, color));
+    SET_VERTEX_ATTRIB_DIV(program,
+                          "VERT_IN_ROTATE_RADIANS",
+                          1,
+                          sizeof(Geom),
+                          offsetof(Geom, rotate_radians));
 
     glUniformMatrix4fv(glGetUniformLocation(program, "PROJECTION"),
                        1,
@@ -523,10 +531,13 @@ i32 main(void) {
     const Vec2f vertices_line[] = {{0.0f, 0.0f}, {1.0f, 1.0f}};
 
     Geom lines[CAP_LINES] = {
-        {{0}, {WINDOW_WIDTH, 0.0f}, COLOR_LINE_0},
-        {{WINDOW_WIDTH, 0.0f}, {0.0f, WINDOW_HEIGHT}, COLOR_LINE_0},
-        {{WINDOW_WIDTH, WINDOW_HEIGHT}, {-WINDOW_WIDTH, 0.0f}, COLOR_LINE_0},
-        {{0.0f, WINDOW_HEIGHT}, {0.0f, -WINDOW_HEIGHT}, COLOR_LINE_0},
+        {{0}, {WINDOW_WIDTH, 0.0f}, COLOR_LINE_0, 0.0f},
+        {{WINDOW_WIDTH, 0.0f}, {0.0f, WINDOW_HEIGHT}, COLOR_LINE_0, 0.0f},
+        {{WINDOW_WIDTH, WINDOW_HEIGHT},
+         {-WINDOW_WIDTH, 0.0f},
+         COLOR_LINE_0,
+         0.0f},
+        {{0.0f, WINDOW_HEIGHT}, {0.0f, -WINDOW_HEIGHT}, COLOR_LINE_0, 0.0f},
     };
 
     const u32 program_line = compile_program(PATH_GEOM_VERT, PATH_GEOM_FRAG);
@@ -550,17 +561,16 @@ i32 main(void) {
         {0.0f, 0.0f},
     };
 
-    Geom quads[] = {
-        {{0}, {WINDOW_WIDTH, WINDOW_HEIGHT}, {0.0f, 1.0f, 1.0f, 1.0f}},
-        {{400.0f, 400.0f}, {25.0f, 100.0f}, COLOR_QUAD},
-        {{600.0f, 250.0f}, {10.0f, 150.0f}, COLOR_QUAD},
-        {{850.0f, 400.0f}, {5.0f, 300.0f}, COLOR_QUAD},
-        {{850.0f, 300.0f}, {100.0f, 5.0f}, COLOR_QUAD},
-        {{1200.0f, 150.0f}, {5.0f, 50.0f}, COLOR_QUAD},
-        {{1150.0f, 225.0f}, {25.0f, 25.0f}, COLOR_QUAD},
-        {{1175.0f, 650.0f}, {5.0f, 75.0f}, COLOR_QUAD},
+    Geom quads[CAP_QUADS] = {
+        {{0}, {WINDOW_WIDTH, WINDOW_HEIGHT}, COLOR_WORLD, 0.0f},
+        {{400.0f, 400.0f}, {25.0f, 100.0f}, COLOR_OBJECT, 0.0f},
+        {{600.0f, 250.0f}, {10.0f, 150.0f}, COLOR_OBJECT, 0.0f},
+        {{850.0f, 400.0f}, {5.0f, 300.0f}, COLOR_OBJECT, 0.0f},
+        {{850.0f, 300.0f}, {100.0f, 5.0f}, COLOR_OBJECT, 0.0f},
+        {{1200.0f, 150.0f}, {5.0f, 50.0f}, COLOR_OBJECT, 0.0f},
+        {{1150.0f, 225.0f}, {25.0f, 25.0f}, COLOR_OBJECT, 0.0f},
+        {{1175.0f, 650.0f}, {5.0f, 75.0f}, COLOR_OBJECT, 0.0f},
     };
-#define LEN_QUADS (sizeof(quads) / sizeof(quads[0]))
 
     const u32 program_quad = compile_program(PATH_GEOM_VERT, PATH_GEOM_FRAG);
     init_geom(program_quad,
@@ -741,7 +751,34 @@ i32 main(void) {
         look_to.y -= VIEW_TRANSLATE.y;
         look_to = turn((Vec2f){0}, look_to, VIEW_ROTATE_RADIANS);
 
-        const Vec2f look_from = extend(position, look_to, 25.0f);
+#define LOOK_FROM_OFFSET 15.0f
+        const Vec2f look_from = extend(position, look_to, LOOK_FROM_OFFSET);
+#undef LOOK_FROM_OFFSET
+
+        u32 len_quads = 8;
+#define PLAYER_INDEX 8
+        {
+#define PLAYER_WIDTH  22.0f
+#define PLAYER_HEIGHT 8.0f
+            EXIT_IF(CAP_QUADS <= len_quads);
+
+            quads[len_quads++] = (Geom){
+                (Vec2f){
+                    position.x - (PLAYER_WIDTH / 2.0f),
+                    position.y - (PLAYER_HEIGHT / 2.0f),
+                },
+                {PLAYER_WIDTH, PLAYER_HEIGHT},
+                COLOR_OBJECT,
+                (VIEW_ROTATE_RADIANS -
+                 ((polar_degrees((Vec2f){look_to.x - look_from.x,
+                                         look_to.y - look_from.y}) *
+                   PI) /
+                  180.0f)) +
+                    (PI / 2.0f),
+            };
+#undef PLAYER_WIDTH
+#undef PLAYER_HEIGHT
+        }
 
         f32 blend = look_from.x / WINDOW_WIDTH;
         if (blend < 0.0f) {
@@ -819,13 +856,17 @@ i32 main(void) {
             {x0, y0},                                                   \
             {look_from.x - (x0), look_from.y - (y0)},                   \
             COLOR_LINE_1,                                               \
+            0.0f,                                                       \
         };                                                              \
     } while (FALSE)
 
         for (u32 i = 0; i < 4; ++i) {
             LINE_BETWEEN(lines[i].translate.x, lines[i].translate.y);
         }
-        for (u32 i = 1; i < LEN_QUADS; ++i) {
+        for (u32 i = 1; i < len_quads; ++i) {
+            if (i == PLAYER_INDEX) {
+                continue;
+            }
             const f32 w = quads[i].scale.x;
             const f32 h = quads[i].scale.y;
 
@@ -853,7 +894,10 @@ i32 main(void) {
 
         for (u32 i = 0; i < len_points; ++i) {
             Vec2f a[2] = {look_from, points[i]};
-            for (u32 j = 1; j < LEN_QUADS; ++j) {
+            for (u32 j = 1; j < len_quads; ++j) {
+                if (j == PLAYER_INDEX) {
+                    continue;
+                }
                 const f32 w = quads[j].scale.x;
                 const f32 h = quads[j].scale.y;
 
@@ -948,14 +992,15 @@ i32 main(void) {
 
         glUseProgram(program_quad);
         glBindVertexArray(vao[1]);
-#if 0
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo[1]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quads), &quads[0]);
-#endif
+        glBufferSubData(GL_ARRAY_BUFFER,
+                        0,
+                        sizeof(quads[0]) * len_quads,
+                        &quads[0]);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP,
                               0,
                               sizeof(vertices_quad) / sizeof(vertices_quad[0]),
-                              (i32)LEN_QUADS);
+                              (i32)len_quads);
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
         glClear(GL_COLOR_BUFFER_BIT);
