@@ -1,6 +1,7 @@
 with import <nixpkgs> {};
 mkShell.override { stdenv = llvmPackages_15.stdenv; } {
     buildInputs = [
+        aseprite
         glfw3
         libGL
         mold
