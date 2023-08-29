@@ -60,6 +60,10 @@ typedef struct {
 } Triangle;
 
 typedef struct {
+    Vec2f points[4];
+} Quad;
+
+typedef struct {
     const char* buffer;
     u32         len;
 } String;
@@ -126,7 +130,8 @@ typedef struct {
         }                                                  \
     } while (FALSE)
 
-#define PI 3.14159274f
+#define PI  3.14159274f
+#define TAU (PI * 2.0f)
 
 #define EPSILON 0.00001f
 
@@ -175,8 +180,8 @@ typedef struct {
 
 #define CAP_BUFFER (1 << 12)
 
-#define CAP_LINES     (1 << 7)
-#define CAP_QUADS     (1 << 7)
+#define CAP_LINES     (1 << 6)
+#define CAP_QUADS     (1 << 4)
 #define CAP_TRIANGLES (1 << 7)
 #define CAP_POINTS    (1 << 7)
 
@@ -292,6 +297,28 @@ static Vec2f turn(Vec2f a, Vec2f b, f32 radians) {
         a.x + (x * c) + (y * s),
         a.y + (x * -s) + (y * c),
     };
+}
+
+static Quad geom_to_quad(Geom geom) {
+    const Vec2f vertices[4] = {
+        {0},
+        {1.0f, 0.0f},
+        {1.0f, 1.0f},
+        {0.0f, 1.0f},
+    };
+
+    const f32 w = geom.scale.x / 2.0f;
+    const f32 h = geom.scale.y / 2.0f;
+
+    Quad quad = {0};
+    for (u32 i = 0; i < 4; ++i) {
+        quad.points[i].x = (vertices[i].x * geom.scale.x) - w;
+        quad.points[i].y = (vertices[i].y * geom.scale.y) - h;
+        quad.points[i] = turn((Vec2f){0}, quad.points[i], geom.rotate_radians);
+        quad.points[i].x += w + geom.translate.x;
+        quad.points[i].y += h + geom.translate.y;
+    }
+    return quad;
 }
 
 static Vec2f normalize(Vec2f v) {
@@ -554,7 +581,7 @@ i32 main(void) {
     glLineWidth(LINE_WIDTH);
     glEnable(GL_LINE_SMOOTH);
 
-    const Vec2f vertices_quad[] = {
+    const Vec2f vertices_quad[4] = {
         {1.0f, 1.0f},
         {1.0f, 0.0f},
         {0.0f, 1.0f},
@@ -756,9 +783,14 @@ i32 main(void) {
 #undef LOOK_FROM_OFFSET
 
         u32 len_quads = 8;
-#define PLAYER_INDEX 8
+        for (u32 i = 1; i < len_quads; ++i) {
+            quads[i].rotate_radians += 0.001f;
+            if (TAU <= quads[i].rotate_radians) {
+                quads[i].rotate_radians -= TAU;
+            }
+        }
         {
-#define PLAYER_WIDTH  22.0f
+#define PLAYER_WIDTH  32.0f
 #define PLAYER_HEIGHT 8.0f
             EXIT_IF(CAP_QUADS <= len_quads);
 
@@ -778,6 +810,11 @@ i32 main(void) {
             };
 #undef PLAYER_WIDTH
 #undef PLAYER_HEIGHT
+        }
+
+        Quad rotated_quads[CAP_QUADS];
+        for (u32 i = 0; i < len_quads; ++i) {
+            rotated_quads[i] = geom_to_quad(quads[i]);
         }
 
         f32 blend = look_from.x / WINDOW_WIDTH;
@@ -836,10 +873,10 @@ i32 main(void) {
             }
         }
 
-#define LINE_BETWEEN(x0, y0)                                            \
+#define LINE_BETWEEN(point)                                             \
     do {                                                                \
-        f32 degrees =                                                   \
-            polar_degrees((Vec2f){(x0)-look_from.x, (y0)-look_from.y}); \
+        f32 degrees = polar_degrees(                                    \
+            (Vec2f){(point).x - look_from.x, (point).y - look_from.y}); \
         Bool inside = FALSE;                                            \
         if ((fov[0] <= degrees) && (degrees <= fov[1])) {               \
             inside |= TRUE;                                             \
@@ -853,27 +890,20 @@ i32 main(void) {
         }                                                               \
         EXIT_IF(CAP_LINES <= len_lines);                                \
         lines[len_lines++] = (Geom){                                    \
-            {x0, y0},                                                   \
-            {look_from.x - (x0), look_from.y - (y0)},                   \
+            (point),                                                    \
+            {look_from.x - ((point).x), look_from.y - (point).y},       \
             COLOR_LINE_1,                                               \
             0.0f,                                                       \
         };                                                              \
     } while (FALSE)
 
         for (u32 i = 0; i < 4; ++i) {
-            LINE_BETWEEN(lines[i].translate.x, lines[i].translate.y);
+            LINE_BETWEEN(lines[i].translate);
         }
         for (u32 i = 1; i < len_quads; ++i) {
-            if (i == PLAYER_INDEX) {
-                continue;
+            for (u32 j = 0; j < 4; ++j) {
+                LINE_BETWEEN(rotated_quads[i].points[j]);
             }
-            const f32 w = quads[i].scale.x;
-            const f32 h = quads[i].scale.y;
-
-            LINE_BETWEEN(quads[i].translate.x, quads[i].translate.y);
-            LINE_BETWEEN(quads[i].translate.x + w, quads[i].translate.y);
-            LINE_BETWEEN(quads[i].translate.x + w, quads[i].translate.y + h);
-            LINE_BETWEEN(quads[i].translate.x, quads[i].translate.y + h);
         }
 
         Vec2f points[CAP_POINTS];
@@ -895,34 +925,22 @@ i32 main(void) {
         for (u32 i = 0; i < len_points; ++i) {
             Vec2f a[2] = {look_from, points[i]};
             for (u32 j = 1; j < len_quads; ++j) {
-                if (j == PLAYER_INDEX) {
-                    continue;
-                }
-                const f32 w = quads[j].scale.x;
-                const f32 h = quads[j].scale.y;
-
                 Vec2f b[2] = {
-                    quads[j].translate,
-                    {quads[j].translate.x + w, quads[j].translate.y},
+                    rotated_quads[j].points[0],
+                    rotated_quads[j].points[1],
                 };
                 intersect(a, b, &points[i]);
 
                 a[1] = points[i];
-                b[0] = (Vec2f){
-                    quads[j].translate.x + w,
-                    quads[j].translate.y + h,
-                };
+                b[0] = rotated_quads[j].points[2];
                 intersect(a, b, &points[i]);
 
                 a[1] = points[i];
-                b[1] = (Vec2f){
-                    quads[j].translate.x,
-                    quads[j].translate.y + h,
-                };
+                b[1] = rotated_quads[j].points[3];
                 intersect(a, b, &points[i]);
 
                 a[1] = points[i];
-                b[0] = quads[j].translate;
+                b[0] = rotated_quads[j].points[0];
                 intersect(a, b, &points[i]);
             }
             for (u32 j = 0; j < 4; ++j) {
@@ -997,10 +1015,7 @@ i32 main(void) {
                         0,
                         sizeof(quads[0]) * len_quads,
                         &quads[0]);
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP,
-                              0,
-                              sizeof(vertices_quad) / sizeof(vertices_quad[0]),
-                              (i32)len_quads);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (i32)len_quads);
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -1019,10 +1034,7 @@ i32 main(void) {
         glBindVertexArray(vao[0]);
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(lines), &lines[0]);
-        glDrawArraysInstanced(GL_LINES,
-                              0,
-                              sizeof(vertices_line) / sizeof(vertices_line[0]),
-                              (i32)len_lines);
+        glDrawArraysInstanced(GL_LINES, 0, 2, (i32)len_lines);
 #endif
 
         glUseProgram(program_shadow);
