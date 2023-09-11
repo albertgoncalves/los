@@ -69,11 +69,6 @@ typedef struct {
 } String;
 
 typedef struct {
-    void* address;
-    u32   len;
-} MemMap;
-
-typedef struct {
     Mat4 projection;
 } Uniforms;
 
@@ -178,8 +173,6 @@ typedef struct {
 #define COLOR_LINE_0 ((Vec4f){0.625f, 0.625f, 0.625f, 0.9f})
 #define COLOR_LINE_1 ((Vec4f){0.5f, 0.5f, 0.5f, 0.275f})
 
-#define CAP_BUFFER (1 << 12)
-
 #define CAP_LINES     (1 << 6)
 #define CAP_QUADS     (1 << 4)
 #define CAP_TRIANGLES (1 << 7)
@@ -199,9 +192,6 @@ typedef struct {
 
 #define PATH_SHADOW_VERT "src/shadow_vert.glsl"
 #define PATH_SHADOW_FRAG "src/shadow_frag.glsl"
-
-static char BUFFER[CAP_BUFFER];
-static u32  LEN_BUFFER = 0;
 
 #define BIND_BUFFER(object, data, size, target, usage) \
     do {                                               \
@@ -241,35 +231,6 @@ static u64 now(void) {
     Time time;
     EXIT_IF(clock_gettime(CLOCK_MONOTONIC, &time));
     return ((u64)time.tv_sec * NANOS_PER_SECOND) + (u64)time.tv_nsec;
-}
-
-static MemMap string_open(const char* path) {
-    EXIT_IF(!path);
-    const i32 file = open(path, O_RDONLY);
-    EXIT_IF(file < 0);
-    FileStat stat;
-    EXIT_IF(fstat(file, &stat) < 0);
-    const MemMap map = {
-        .address =
-            mmap(NULL, (u32)stat.st_size, PROT_READ, MAP_SHARED, file, 0),
-        .len = (u32)stat.st_size,
-    };
-    EXIT_IF(map.address == MAP_FAILED);
-    close(file);
-    return map;
-}
-
-static const char* string_copy(MemMap map) {
-    const String string = {
-        .buffer = (const char*)map.address,
-        .len = map.len,
-    };
-    EXIT_IF(CAP_BUFFER < (LEN_BUFFER + string.len + 1));
-    char* copy = &BUFFER[LEN_BUFFER];
-    memcpy(copy, string.buffer, string.len);
-    LEN_BUFFER += string.len;
-    BUFFER[LEN_BUFFER++] = '\0';
-    return copy;
 }
 
 static f32 epsilon(f32 x) {
@@ -413,23 +374,44 @@ static void callback_key(GLFWwindow* window, i32 key, i32, i32 action, i32) {
 }
 
 static void compile_shader(const char* path, u32 shader) {
-    const MemMap map = string_open(path);
-    const char*  source = string_copy(map);
-    glShaderSource(shader, 1, &source, NULL);
+    EXIT_IF(!path);
+    const i32 file = open(path, O_RDONLY);
+    EXIT_IF(file < 0);
+
+    FileStat stat;
+    EXIT_IF(fstat(file, &stat) < 0);
+    const u32 len = (u32)stat.st_size;
+
+    void* address = mmap(NULL, len, PROT_READ, MAP_SHARED, file, 0);
+    close(file);
+    EXIT_IF(address == MAP_FAILED);
+
+    {
+#define CAP_BUFFER (1 << 10)
+        EXIT_IF(CAP_BUFFER < len);
+        char buffer[CAP_BUFFER];
+        memcpy(buffer, address, len);
+
+        const char* buffers[1] = {buffer};
+        const i32   lens[1] = {(i32)len};
+        glShaderSource(shader, 1, buffers, lens);
+#undef CAP_BUFFER
+    }
+
     glCompileShader(shader);
     {
         i32 status = 0;
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
         if (!status) {
-            glGetShaderInfoLog(shader,
-                               (i32)(CAP_BUFFER - LEN_BUFFER),
-                               NULL,
-                               &BUFFER[LEN_BUFFER]);
-            printf("%s", &BUFFER[LEN_BUFFER]);
+#define CAP_BUFFER (1 << 8)
+            char buffer[CAP_BUFFER];
+            glGetShaderInfoLog(shader, CAP_BUFFER, NULL, &buffer[0]);
+            printf("%s", &buffer[0]);
             EXIT();
+#undef CAP_BUFFER
         }
     }
-    EXIT_IF(munmap(map.address, map.len));
+    EXIT_IF(munmap(address, len));
 }
 
 static u32 compile_program(const char* source_vert, const char* source_frag) {
@@ -445,12 +427,12 @@ static u32 compile_program(const char* source_vert, const char* source_frag) {
         i32 status = 0;
         glGetProgramiv(program, GL_LINK_STATUS, &status);
         if (!status) {
-            glGetProgramInfoLog(program,
-                                (i32)(CAP_BUFFER - LEN_BUFFER),
-                                NULL,
-                                &BUFFER[LEN_BUFFER]);
-            printf("%s", &BUFFER[LEN_BUFFER]);
+#define CAP_BUFFER (1 << 8)
+            char buffer[CAP_BUFFER];
+            glGetProgramInfoLog(program, CAP_BUFFER, NULL, &buffer[0]);
+            printf("%s", &buffer[0]);
             EXIT();
+#undef CAP_BUFFER
         }
     }
     glDeleteShader(shader_vert);
