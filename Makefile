@@ -20,7 +20,8 @@ CFLAGS = \
 	-Weverything \
 	-Wno-c2x-extensions \
 	-Wno-declaration-after-statement \
-	-Wno-padded
+	-Wno-padded \
+	-Wno-unsafe-buffer-usage
 
 .PHONY: all
 all: bin/main
