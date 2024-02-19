@@ -777,7 +777,7 @@ i32 main(void) {
             EXIT_IF(CAP_QUADS <= len_quads);
 
             quads[len_quads++] = (Geom){
-                (Vec2f){
+                {
                     position.x - (PLAYER_WIDTH / 2.0f),
                     position.y - (PLAYER_HEIGHT / 2.0f),
                 },
@@ -887,6 +887,7 @@ i32 main(void) {
                 LINE_BETWEEN(rotated_quads[i].points[j]);
             }
         }
+#undef LINE_BETWEEN
 
         Vec2f points[CAP_POINTS];
 
@@ -1023,6 +1024,7 @@ i32 main(void) {
         glBindVertexArray(vao[3]);
         glUniform1f(uniform_blend, blend);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, LEN_SHADOWS);
+#undef LEN_SHADOWS
 
         glfwSwapBuffers(window);
 
