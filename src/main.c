@@ -791,8 +791,8 @@ i32 main(void) {
             }
         }
         {
-#define PLAYER_WIDTH  32.0f
-#define PLAYER_HEIGHT 8.0f
+#define PLAYER_WIDTH  24.0f
+#define PLAYER_HEIGHT 16.0f
             EXIT_IF(CAP_QUADS <= len_quads);
 
             quads[len_quads++] = (Geom){
