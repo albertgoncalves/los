@@ -8,6 +8,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define STATIC_ASSERT(condition) _Static_assert(condition, "!(" #condition ")")
+
 #define GL_GLEXT_PROTOTYPES
 
 #include <GLFW/glfw3.h>
@@ -17,6 +19,10 @@ typedef uint64_t u64;
 typedef int32_t  i32;
 typedef float    f32;
 typedef double   f64;
+
+STATIC_ASSERT(sizeof(f32) == sizeof(u32));
+STATIC_ASSERT(sizeof(f64) == sizeof(u64));
+STATIC_ASSERT(sizeof(void*) == sizeof(u64));
 
 typedef struct stat FileStat;
 
