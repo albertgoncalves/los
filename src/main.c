@@ -712,7 +712,12 @@ i32 main(void) {
     u64 time[2] = {now()};
     u64 frames = 0;
 
-    printf("\n\n");
+    u32 len_lines = 0;
+    u32 len_quads = 0;
+    u32 len_points = 0;
+    u32 len_triangles = 0;
+
+    printf("\n\n\n\n\n\n");
     while (!glfwWindowShouldClose(window)) {
         {
             time[1] = now();
@@ -720,11 +725,19 @@ i32 main(void) {
             if (NANOS_PER_SECOND <= elapsed) {
                 const f64 nanoseconds_per_frame =
                     ((f64)elapsed) / ((f64)frames);
-                printf("\033[2A"
+                printf("\033[6A"
                        "%9.0f ns/f\n"
-                       "%9lu frames\n",
+                       "%9lu frames\n"
+                       "%9u len_lines\n"
+                       "%9u len_quads\n"
+                       "%9u len_points\n"
+                       "%9u len_triangles\n",
                        nanoseconds_per_frame,
-                       frames);
+                       frames,
+                       len_lines,
+                       len_quads,
+                       len_points,
+                       len_triangles);
                 time[0] = time[1];
                 frames = 0;
             }
@@ -770,7 +783,7 @@ i32 main(void) {
         const Vec2f look_from = extend(position, look_to, LOOK_FROM_OFFSET);
 #undef LOOK_FROM_OFFSET
 
-        u32 len_quads = 8;
+        len_quads = 8;
         for (u32 i = 1; i < len_quads; ++i) {
             quads[i].rotate_radians += 0.001f;
             if (TAU <= quads[i].rotate_radians) {
@@ -824,7 +837,7 @@ i32 main(void) {
         };
 #undef FOV_RADIANS
 
-        u32 len_lines = 6;
+        len_lines = 6;
         EXIT_IF(CAP_LINES < len_lines);
         lines[4].translate = target[0];
         lines[5].translate = target[1];
@@ -897,7 +910,7 @@ i32 main(void) {
 
         Vec2f points[CAP_POINTS];
 
-        u32 len_points = 0;
+        len_points = 0;
         for (u32 i = 4; i < len_lines; ++i) {
             EXIT_IF(CAP_POINTS <= (len_points + 2));
             points[len_points++] = lines[i].translate;
@@ -968,7 +981,7 @@ i32 main(void) {
             }
         }
 
-        u32 len_triangles = 0;
+        len_triangles = 0;
         for (u32 i = 1; i < len_points; ++i) {
             EXIT_IF(CAP_TRIANGLES <= len_triangles);
             triangles[len_triangles++] = (Triangle){{
