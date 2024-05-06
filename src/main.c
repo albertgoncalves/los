@@ -1061,5 +1061,8 @@ i32 main(void) {
     glDeleteProgram(program_triangles);
     glDeleteProgram(program_shadow);
 
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
     return OK;
 }
