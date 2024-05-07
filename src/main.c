@@ -104,33 +104,6 @@ typedef struct {
         }                          \
     } while (FALSE)
 
-#define EXIT_IF_GL_ERROR()                                 \
-    do {                                                   \
-        switch (glGetError()) {                            \
-        case GL_INVALID_ENUM: {                            \
-            EXIT_WITH("GL_INVALID_ENUM");                  \
-        }                                                  \
-        case GL_INVALID_VALUE: {                           \
-            EXIT_WITH("GL_INVALID_VALUE");                 \
-        }                                                  \
-        case GL_INVALID_OPERATION: {                       \
-            EXIT_WITH("GL_INVALID_OPERATION");             \
-        }                                                  \
-        case GL_INVALID_FRAMEBUFFER_OPERATION: {           \
-            EXIT_WITH("GL_INVALID_FRAMEBUFFER_OPERATION"); \
-        }                                                  \
-        case GL_OUT_OF_MEMORY: {                           \
-            EXIT_WITH("GL_OUT_OF_MEMORY");                 \
-        }                                                  \
-        case GL_NO_ERROR: {                                \
-            break;                                         \
-        }                                                  \
-        default: {                                         \
-            EXIT();                                        \
-        }                                                  \
-        }                                                  \
-    } while (FALSE)
-
 #define PI  3.14159274f
 #define TAU (PI * 2.0f)
 
@@ -203,7 +176,6 @@ typedef struct {
     do {                                               \
         glBindBuffer(target, object);                  \
         glBufferData(target, size, data, usage);       \
-        EXIT_IF_GL_ERROR();                            \
     } while (FALSE)
 
 #define SET_VERTEX_ATTRIB(program, label, size, stride, offset)     \
@@ -216,7 +188,6 @@ typedef struct {
                               FALSE,                                \
                               stride,                               \
                               (void*)(offset));                     \
-        EXIT_IF_GL_ERROR();                                         \
     } while (FALSE)
 
 #define SET_VERTEX_ATTRIB_DIV(program, label, size, stride, offset) \
@@ -230,7 +201,6 @@ typedef struct {
                               stride,                               \
                               (void*)(offset));                     \
         glVertexAttribDivisor(index, 1);                            \
-        EXIT_IF_GL_ERROR();                                         \
     } while (FALSE)
 
 static u64 now(void) {
@@ -362,12 +332,23 @@ static void intersect(const Vec2f a[2], const Vec2f b[2], Vec2f* point) {
     point->y = a[0].y + (t * (a[1].y - a[0].y));
 }
 
-ATTRIBUTE(noreturn) static void callback_error(i32 code, const char* error) {
-    printf("%d: %s\n", code, error);
+ATTRIBUTE(noreturn)
+static void callback_glfw_error(i32 code, const char* error) {
+    fflush(stdout);
+    fflush(stderr);
+    fprintf(stderr, "%d", code);
+    if (error) {
+        fprintf(stderr, ": %s", error);
+    }
+    fputc('\n', stderr);
     EXIT();
 }
 
-static void callback_key(GLFWwindow* window, i32 key, i32, i32 action, i32) {
+static void callback_glfw_key(GLFWwindow* window,
+                              i32         key,
+                              i32,
+                              i32 action,
+                              i32) {
     if (action != GLFW_PRESS) {
         return;
     }
@@ -377,6 +358,24 @@ static void callback_key(GLFWwindow* window, i32 key, i32, i32 action, i32) {
         break;
     }
     }
+}
+
+ATTRIBUTE(noreturn)
+static void callback_gl_debug(u32,
+                              u32,
+                              u32,
+                              u32,
+                              i32         length,
+                              const char* message,
+                              const void*) {
+    fflush(stdout);
+    fflush(stderr);
+    if (0 < length) {
+        fprintf(stderr, "%.*s", length, message);
+    } else {
+        fprintf(stderr, "%s", message);
+    }
+    EXIT();
 }
 
 static void compile_shader(const char* path, u32 shader) {
@@ -443,7 +442,6 @@ static u32 compile_program(const char* source_vert, const char* source_frag) {
     }
     glDeleteShader(shader_vert);
     glDeleteShader(shader_frag);
-    EXIT_IF_GL_ERROR();
     return program;
 }
 
@@ -501,13 +499,13 @@ static void init_geom(u32          program,
                        1,
                        FALSE,
                        &view->column_row[0][0]);
-    EXIT_IF_GL_ERROR();
 }
 
 i32 main(void) {
     EXIT_IF(!glfwInit());
-    glfwSetErrorCallback(callback_error);
+    glfwSetErrorCallback(callback_glfw_error);
 
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, TRUE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -517,9 +515,14 @@ i32 main(void) {
         glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, __FILE__, NULL, NULL);
     EXIT_IF(!window);
 
-    glfwSetKeyCallback(window, callback_key);
+    glfwSetKeyCallback(window, callback_glfw_key);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(callback_gl_debug, NULL);
+
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glClearColor(COLOR_BACKGROUND.x,
                  COLOR_BACKGROUND.y,
@@ -528,7 +531,6 @@ i32 main(void) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_MULTISAMPLE);
-    EXIT_IF_GL_ERROR();
 
     const Mat4 projection =
         orthographic(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, VIEW_NEAR, VIEW_FAR);
@@ -631,7 +633,6 @@ i32 main(void) {
                        1,
                        FALSE,
                        &view.column_row[0][0]);
-    EXIT_IF_GL_ERROR();
 
     const Vec2f shadow[] = {
         {WINDOW_WIDTH, WINDOW_HEIGHT},
@@ -663,7 +664,6 @@ i32 main(void) {
                        1,
                        FALSE,
                        &view.column_row[0][0]);
-    EXIT_IF_GL_ERROR();
 
     u32 textures[CAP_TEXTURES];
     glGenTextures(CAP_TEXTURES, &textures[0]);
@@ -688,9 +688,8 @@ i32 main(void) {
                                0);
     }
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        EXIT_IF_GL_ERROR();
-    }
+    EXIT_IF(glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
+            GL_FRAMEBUFFER_COMPLETE);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[0]);
@@ -703,8 +702,6 @@ i32 main(void) {
     const i32 uniform_blend = glGetUniformLocation(program_shadow, "BLEND");
     glUniform1i(glGetUniformLocation(program_shadow, "MULTISAMPLES"),
                 MULTISAMPLES);
-
-    EXIT_IF_GL_ERROR();
 
     Vec2f position = {WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f};
     Vec2f speed = {0};
