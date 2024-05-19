@@ -69,15 +69,6 @@ typedef struct {
     Vec2f points[4];
 } Quad;
 
-typedef struct {
-    const char* buffer;
-    u32         len;
-} String;
-
-typedef struct {
-    Mat4 projection;
-} Uniforms;
-
 #define OK    0
 #define ERROR 1
 
