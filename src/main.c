@@ -493,8 +493,9 @@ static void init_geom(u32          program,
 }
 
 i32 main(void) {
-    EXIT_IF(!glfwInit());
     glfwSetErrorCallback(callback_glfw_error);
+
+    EXIT_IF(!glfwInit());
 
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, TRUE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
