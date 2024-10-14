@@ -18,7 +18,7 @@ CFLAGS = \
 	-std=c99 \
 	-Werror \
 	-Weverything \
-	-Wno-c2x-extensions \
+	-Wno-c23-extensions \
 	-Wno-declaration-after-statement \
 	-Wno-padded \
 	-Wno-unsafe-buffer-usage

@@ -1,5 +1,5 @@
 with import <nixpkgs> {};
-mkShell.override { stdenv = llvmPackages_17.stdenv; } {
+mkShell.override { stdenv = llvmPackages_18.stdenv; } {
     buildInputs = [
         aseprite
         glfw3
@@ -7,7 +7,7 @@ mkShell.override { stdenv = llvmPackages_17.stdenv; } {
         mold
     ];
     APPEND_LIBRARY_PATH = lib.makeLibraryPath [
-        glfw
+        glfw3
         libGL
     ];
     shellHook = ''

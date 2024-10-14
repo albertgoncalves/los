@@ -348,6 +348,8 @@ static void callback_glfw_key(GLFWwindow* window,
         glfwSetWindowShouldClose(window, TRUE);
         break;
     }
+    default: {
+    }
     }
 }
 
