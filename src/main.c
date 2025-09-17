@@ -700,7 +700,8 @@ i32 main(void) {
     Vec2f position = {WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f};
     Vec2f speed = {0};
 
-    u64 time[2] = {now()};
+    u64 prev = now();
+    u64 elapsed = 0;
     u64 frames = 0;
 
     u32 len_lines = 0;
@@ -711,8 +712,9 @@ i32 main(void) {
     printf("\n\n\n\n\n\n");
     while (!glfwWindowShouldClose(window)) {
         {
-            time[1] = now();
-            const u64 elapsed = time[1] - time[0];
+            const u64 next = now();
+            elapsed += next - prev;
+            prev = next;
             if (NANOS_PER_SECOND <= elapsed) {
                 const f64 nanoseconds_per_frame =
                     ((f64)elapsed) / ((f64)frames);
@@ -729,10 +731,12 @@ i32 main(void) {
                        len_quads,
                        len_points,
                        len_triangles);
-                time[0] = time[1];
+                elapsed = 0;
                 frames = 0;
             }
         }
+
+        ++frames;
 
         glfwPollEvents();
 
@@ -1037,8 +1041,6 @@ i32 main(void) {
 #undef LEN_SHADOWS
 
         glfwSwapBuffers(window);
-
-        ++frames;
     }
 
     glDeleteTextures(CAP_TEXTURES, &textures[0]);
