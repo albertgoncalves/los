@@ -38,3 +38,11 @@ bin/main: src/main.c
 	mkdir -p bin/
 	clang-format -i src/*.glsl src/*.c
 	$(CC) $(CFLAGS) -o bin/main src/main.c
+
+.PHONY: profile
+profile: all
+	sudo sh -c "echo 1 > /proc/sys/kernel/perf_event_paranoid"
+	sudo sh -c "echo 0 > /proc/sys/kernel/kptr_restrict"
+	perf record --call-graph fp ./bin/main
+	perf report
+	rm perf.data*
