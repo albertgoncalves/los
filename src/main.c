@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdint.h>
@@ -69,31 +70,7 @@ typedef struct {
     Vec2f points[4];
 } Quad;
 
-#define OK    0
-#define ERROR 1
-
 #define NANOS_PER_SECOND 1000000000
-
-#define ATTRIBUTE(x) __attribute__((x))
-
-#define EXIT()                                                       \
-    do {                                                             \
-        fprintf(stderr, "%s:%s:%d\n", __FILE__, __func__, __LINE__); \
-        _exit(ERROR);                                                \
-    } while (FALSE)
-
-#define EXIT_WITH(x)                                                         \
-    do {                                                                     \
-        fprintf(stderr, "%s:%s:%d `%s`\n", __FILE__, __func__, __LINE__, x); \
-        _exit(ERROR);                                                        \
-    } while (FALSE)
-
-#define EXIT_IF(condition)         \
-    do {                           \
-        if (condition) {           \
-            EXIT_WITH(#condition); \
-        }                          \
-    } while (FALSE)
 
 #define PI  ((f32)M_PI)
 #define TAU (PI * 2.0f)
@@ -198,7 +175,7 @@ typedef struct {
 
 static u64 now(void) {
     Time time;
-    EXIT_IF(clock_gettime(CLOCK_MONOTONIC, &time));
+    assert(clock_gettime(CLOCK_MONOTONIC, &time) == 0);
     return ((u64)time.tv_sec * NANOS_PER_SECOND) + (u64)time.tv_nsec;
 }
 
@@ -325,8 +302,8 @@ static void intersect(const Vec2f a[2], const Vec2f b[2], Vec2f* point) {
     point->y = a[0].y + (t * (a[1].y - a[0].y));
 }
 
-ATTRIBUTE(noreturn)
-static void callback_glfw_error(i32 code, const char* error) {
+__attribute__((noreturn)) static void callback_glfw_error(i32         code,
+                                                          const char* error) {
     fflush(stdout);
     fflush(stderr);
     fprintf(stderr, "%d", code);
@@ -334,7 +311,7 @@ static void callback_glfw_error(i32 code, const char* error) {
         fprintf(stderr, ": %s", error);
     }
     fputc('\n', stderr);
-    EXIT();
+    assert(0);
 }
 
 static void callback_glfw_key(GLFWwindow* window,
@@ -355,14 +332,13 @@ static void callback_glfw_key(GLFWwindow* window,
     }
 }
 
-ATTRIBUTE(noreturn)
-static void callback_gl_debug(u32,
-                              u32,
-                              u32,
-                              u32,
-                              i32         length,
-                              const char* message,
-                              const void*) {
+__attribute__((noreturn)) static void callback_gl_debug(u32,
+                                                        u32,
+                                                        u32,
+                                                        u32,
+                                                        i32         length,
+                                                        const char* message,
+                                                        const void*) {
     fflush(stdout);
     fflush(stderr);
     if (0 < length) {
@@ -370,25 +346,25 @@ static void callback_gl_debug(u32,
     } else {
         fprintf(stderr, "%s", message);
     }
-    EXIT();
+    assert(0);
 }
 
 static void compile_shader(const char* path, u32 shader) {
-    EXIT_IF(!path);
+    assert(path);
     const i32 file = open(path, O_RDONLY);
-    EXIT_IF(file < 0);
+    assert(0 <= file);
 
     FileStat stat;
-    EXIT_IF(fstat(file, &stat) < 0);
+    assert(0 <= fstat(file, &stat));
     const u32 len = (u32)stat.st_size;
 
     void* address = mmap(NULL, len, PROT_READ, MAP_SHARED, file, 0);
     close(file);
-    EXIT_IF(address == MAP_FAILED);
+    assert(address != MAP_FAILED);
 
     {
 #define CAP_BUFFER (1 << 10)
-        EXIT_IF(CAP_BUFFER < len);
+        assert(len <= CAP_BUFFER);
         char buffer[CAP_BUFFER];
         memcpy(buffer, address, len);
 
@@ -407,11 +383,11 @@ static void compile_shader(const char* path, u32 shader) {
             char buffer[CAP_BUFFER];
             glGetShaderInfoLog(shader, CAP_BUFFER, NULL, &buffer[0]);
             printf("%s", &buffer[0]);
-            EXIT();
+            assert(0);
 #undef CAP_BUFFER
         }
     }
-    EXIT_IF(munmap(address, len));
+    assert(munmap(address, len) == 0);
 }
 
 static u32 compile_program(const char* source_vert, const char* source_frag) {
@@ -431,7 +407,7 @@ static u32 compile_program(const char* source_vert, const char* source_frag) {
             char buffer[CAP_BUFFER];
             glGetProgramInfoLog(program, CAP_BUFFER, NULL, &buffer[0]);
             printf("%s", &buffer[0]);
-            EXIT();
+            assert(0);
 #undef CAP_BUFFER
         }
     }
@@ -499,7 +475,7 @@ static void init_geom(u32          program,
 i32 main(void) {
     glfwSetErrorCallback(callback_glfw_error);
 
-    EXIT_IF(!glfwInit());
+    assert(glfwInit());
 
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, TRUE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -509,7 +485,7 @@ i32 main(void) {
     glfwWindowHint(GLFW_SAMPLES, MULTISAMPLES_WINDOW);
     GLFWwindow* window =
         glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, __FILE__, NULL, NULL);
-    EXIT_IF(!window);
+    assert(window);
 
     glfwSetKeyCallback(window, callback_glfw_key);
     glfwMakeContextCurrent(window);
@@ -684,8 +660,8 @@ i32 main(void) {
                                0);
     }
 
-    EXIT_IF(glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
-            GL_FRAMEBUFFER_COMPLETE);
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) ==
+           GL_FRAMEBUFFER_COMPLETE);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[0]);
@@ -790,7 +766,7 @@ i32 main(void) {
         {
 #define PLAYER_WIDTH  24.0f
 #define PLAYER_HEIGHT 16.0f
-            EXIT_IF(CAP_QUADS <= len_quads);
+            assert(len_quads < CAP_QUADS);
 
             quads[len_quads++] = (Geom){
                 {
@@ -835,7 +811,7 @@ i32 main(void) {
 #undef FOV_RADIANS
 
         len_lines = 6;
-        EXIT_IF(CAP_LINES < len_lines);
+        assert(len_lines <= CAP_LINES);
         lines[4].translate = target[0];
         lines[5].translate = target[1];
         for (u32 i = 4; i < 6; ++i) {
@@ -886,7 +862,7 @@ i32 main(void) {
         if (!inside) {                                                  \
             break;                                                      \
         }                                                               \
-        EXIT_IF(CAP_LINES <= len_lines);                                \
+        assert(len_lines < CAP_LINES);                                  \
         lines[len_lines++] = (Geom){                                    \
             (point),                                                    \
             {look_from.x - ((point).x), look_from.y - (point).y},       \
@@ -909,7 +885,7 @@ i32 main(void) {
 
         len_points = 0;
         for (u32 i = 4; i < len_lines; ++i) {
-            EXIT_IF(CAP_POINTS <= (len_points + 2));
+            assert((len_points + 2) < CAP_POINTS);
             points[len_points++] = lines[i].translate;
             points[len_points++] =
                 extend(look_from,
@@ -980,7 +956,7 @@ i32 main(void) {
 
         len_triangles = 0;
         for (u32 i = 1; i < len_points; ++i) {
-            EXIT_IF(CAP_TRIANGLES <= len_triangles);
+            assert(len_triangles < CAP_TRIANGLES);
             triangles[len_triangles++] = (Triangle){{
                 {look_from, COLOR_TRIANGLE_0},
                 {points[i - 1], COLOR_TRIANGLE_1},
@@ -1059,5 +1035,5 @@ i32 main(void) {
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    return OK;
+    return 0;
 }
