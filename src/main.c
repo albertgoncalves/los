@@ -148,29 +148,19 @@ typedef struct {
         glBufferData(target, size, data, usage);       \
     } while (FALSE)
 
-#define SET_VERTEX_ATTRIB(program, label, size, stride, offset)     \
-    do {                                                            \
-        const u32 index = (u32)glGetAttribLocation(program, label); \
-        glEnableVertexAttribArray(index);                           \
-        glVertexAttribPointer(index,                                \
-                              size,                                 \
-                              GL_FLOAT,                             \
-                              FALSE,                                \
-                              stride,                               \
-                              (void*)(offset));                     \
+#define SET_VERTEX_ATTRIB(program, label, size, stride, offset)                       \
+    do {                                                                              \
+        const u32 index = (u32)glGetAttribLocation(program, label);                   \
+        glEnableVertexAttribArray(index);                                             \
+        glVertexAttribPointer(index, size, GL_FLOAT, FALSE, stride, (void*)(offset)); \
     } while (FALSE)
 
-#define SET_VERTEX_ATTRIB_DIV(program, label, size, stride, offset) \
-    do {                                                            \
-        const u32 index = (u32)glGetAttribLocation(program, label); \
-        glEnableVertexAttribArray(index);                           \
-        glVertexAttribPointer(index,                                \
-                              size,                                 \
-                              GL_FLOAT,                             \
-                              FALSE,                                \
-                              stride,                               \
-                              (void*)(offset));                     \
-        glVertexAttribDivisor(index, 1);                            \
+#define SET_VERTEX_ATTRIB_DIV(program, label, size, stride, offset)                   \
+    do {                                                                              \
+        const u32 index = (u32)glGetAttribLocation(program, label);                   \
+        glEnableVertexAttribArray(index);                                             \
+        glVertexAttribPointer(index, size, GL_FLOAT, FALSE, stride, (void*)(offset)); \
+        glVertexAttribDivisor(index, 1);                                              \
     } while (FALSE)
 
 static u64 now(void) {
@@ -184,8 +174,7 @@ static f32 epsilon(f32 x) {
 }
 
 static f32 polar_degrees(Vec2f point) {
-    const f32 degrees =
-        (atanf(epsilon(point.y) / epsilon(point.x)) / PI) * 180.0f;
+    const f32 degrees = (atanf(epsilon(point.y) / epsilon(point.x)) / PI) * 180.0f;
     if (point.x < 0.0f) {
         return 180.0f + degrees;
     }
@@ -262,12 +251,7 @@ static Mat4 translate_rotate(Vec2f translate, f32 rotate_radians) {
     };
 }
 
-static Mat4 orthographic(f32 left,
-                         f32 right,
-                         f32 bottom,
-                         f32 top,
-                         f32 near,
-                         f32 far) {
+static Mat4 orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far) {
     return (Mat4){
         .column_row[0][0] = 2.0f / (right - left),
         .column_row[1][1] = 2.0f / (top - bottom),
@@ -302,8 +286,7 @@ static void intersect(const Vec2f a[2], const Vec2f b[2], Vec2f* point) {
     point->y = a[0].y + (t * (a[1].y - a[0].y));
 }
 
-__attribute__((noreturn)) static void callback_glfw_error(i32         code,
-                                                          const char* error) {
+__attribute__((noreturn)) static void callback_glfw_error(i32 code, const char* error) {
     fflush(stdout);
     fflush(stderr);
     fprintf(stderr, "%d", code);
@@ -314,11 +297,7 @@ __attribute__((noreturn)) static void callback_glfw_error(i32         code,
     assert(0);
 }
 
-static void callback_glfw_key(GLFWwindow* window,
-                              i32         key,
-                              i32,
-                              i32 action,
-                              i32) {
+static void callback_glfw_key(GLFWwindow* window, i32 key, i32, i32 action, i32) {
     if (action != GLFW_PRESS) {
         return;
     }
@@ -430,32 +409,12 @@ static void init_geom(u32          program,
     glBindVertexArray(vao);
 
     BIND_BUFFER(vbo, vertices, size_vertices, GL_ARRAY_BUFFER, GL_STATIC_DRAW);
-    SET_VERTEX_ATTRIB(program,
-                      "VERT_IN_POSITION",
-                      2,
-                      sizeof(Vec2f),
-                      offsetof(Vec2f, x));
-    BIND_BUFFER(instance_vbo,
-                geoms,
-                size_geoms,
-                GL_ARRAY_BUFFER,
-                GL_DYNAMIC_DRAW);
+    SET_VERTEX_ATTRIB(program, "VERT_IN_POSITION", 2, sizeof(Vec2f), offsetof(Vec2f, x));
+    BIND_BUFFER(instance_vbo, geoms, size_geoms, GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW);
 
-    SET_VERTEX_ATTRIB_DIV(program,
-                          "VERT_IN_TRANSLATE",
-                          2,
-                          sizeof(Geom),
-                          offsetof(Geom, translate));
-    SET_VERTEX_ATTRIB_DIV(program,
-                          "VERT_IN_SCALE",
-                          2,
-                          sizeof(Geom),
-                          offsetof(Geom, scale));
-    SET_VERTEX_ATTRIB_DIV(program,
-                          "VERT_IN_COLOR",
-                          4,
-                          sizeof(Geom),
-                          offsetof(Geom, color));
+    SET_VERTEX_ATTRIB_DIV(program, "VERT_IN_TRANSLATE", 2, sizeof(Geom), offsetof(Geom, translate));
+    SET_VERTEX_ATTRIB_DIV(program, "VERT_IN_SCALE", 2, sizeof(Geom), offsetof(Geom, scale));
+    SET_VERTEX_ATTRIB_DIV(program, "VERT_IN_COLOR", 4, sizeof(Geom), offsetof(Geom, color));
     SET_VERTEX_ATTRIB_DIV(program,
                           "VERT_IN_ROTATE_RADIANS",
                           1,
@@ -466,10 +425,7 @@ static void init_geom(u32          program,
                        1,
                        FALSE,
                        &projection->column_row[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(program, "VIEW"),
-                       1,
-                       FALSE,
-                       &view->column_row[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(program, "VIEW"), 1, FALSE, &view->column_row[0][0]);
 }
 
 i32 main(void) {
@@ -483,8 +439,7 @@ i32 main(void) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, FALSE);
     glfwWindowHint(GLFW_SAMPLES, MULTISAMPLES_WINDOW);
-    GLFWwindow* window =
-        glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, __FILE__, NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, __FILE__, NULL, NULL);
     assert(window);
 
     glfwSetKeyCallback(window, callback_glfw_key);
@@ -496,16 +451,12 @@ i32 main(void) {
     glDebugMessageCallback(callback_gl_debug, NULL);
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-    glClearColor(COLOR_BACKGROUND.x,
-                 COLOR_BACKGROUND.y,
-                 COLOR_BACKGROUND.z,
-                 COLOR_BACKGROUND.w);
+    glClearColor(COLOR_BACKGROUND.x, COLOR_BACKGROUND.y, COLOR_BACKGROUND.z, COLOR_BACKGROUND.w);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_MULTISAMPLE);
 
-    const Mat4 projection =
-        orthographic(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, VIEW_NEAR, VIEW_FAR);
+    const Mat4 projection = orthographic(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, VIEW_NEAR, VIEW_FAR);
     const Mat4 view = translate_rotate(VIEW_TRANSLATE, VIEW_ROTATE_RADIANS);
 
     u32 vao[CAP_VAO];
@@ -522,10 +473,7 @@ i32 main(void) {
     Geom lines[CAP_LINES] = {
         {{0}, {WINDOW_WIDTH, 0.0f}, COLOR_LINE_0, 0.0f},
         {{WINDOW_WIDTH, 0.0f}, {0.0f, WINDOW_HEIGHT}, COLOR_LINE_0, 0.0f},
-        {{WINDOW_WIDTH, WINDOW_HEIGHT},
-         {-WINDOW_WIDTH, 0.0f},
-         COLOR_LINE_0,
-         0.0f},
+        {{WINDOW_WIDTH, WINDOW_HEIGHT}, {-WINDOW_WIDTH, 0.0f}, COLOR_LINE_0, 0.0f},
         {{0.0f, WINDOW_HEIGHT}, {0.0f, -WINDOW_HEIGHT}, COLOR_LINE_0, 0.0f},
     };
 
@@ -575,27 +523,18 @@ i32 main(void) {
 
     Triangle triangles[CAP_TRIANGLES];
 
-    const u32 program_triangles =
-        compile_program(PATH_TRIANGLE_VERT, PATH_TRIANGLE_FRAG);
+    const u32 program_triangles = compile_program(PATH_TRIANGLE_VERT, PATH_TRIANGLE_FRAG);
     glUseProgram(program_triangles);
     glBindVertexArray(vao[2]);
 
-    BIND_BUFFER(vbo[2],
-                triangles,
-                sizeof(triangles),
-                GL_ARRAY_BUFFER,
-                GL_DYNAMIC_DRAW);
+    BIND_BUFFER(vbo[2], triangles, sizeof(triangles), GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW);
 
     SET_VERTEX_ATTRIB(program_triangles,
                       "VERT_IN_POSITION",
                       2,
                       sizeof(Point),
                       offsetof(Point, translate));
-    SET_VERTEX_ATTRIB(program_triangles,
-                      "VERT_IN_COLOR",
-                      4,
-                      sizeof(Point),
-                      offsetof(Point, color));
+    SET_VERTEX_ATTRIB(program_triangles, "VERT_IN_COLOR", 4, sizeof(Point), offsetof(Point, color));
 
     glUniformMatrix4fv(glGetUniformLocation(program_triangles, "PROJECTION"),
                        1,
@@ -614,20 +553,11 @@ i32 main(void) {
     };
 #define LEN_SHADOWS (sizeof(shadow) / sizeof(shadow[0]))
 
-    const u32 program_shadow =
-        compile_program(PATH_SHADOW_VERT, PATH_SHADOW_FRAG);
+    const u32 program_shadow = compile_program(PATH_SHADOW_VERT, PATH_SHADOW_FRAG);
     glUseProgram(program_shadow);
     glBindVertexArray(vao[3]);
-    BIND_BUFFER(vbo[3],
-                shadow,
-                sizeof(shadow),
-                GL_ARRAY_BUFFER,
-                GL_DYNAMIC_DRAW);
-    SET_VERTEX_ATTRIB(program_shadow,
-                      "VERT_IN_POSITION",
-                      2,
-                      sizeof(Vec2f),
-                      offsetof(Vec2f, x));
+    BIND_BUFFER(vbo[3], shadow, sizeof(shadow), GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW);
+    SET_VERTEX_ATTRIB(program_shadow, "VERT_IN_POSITION", 2, sizeof(Vec2f), offsetof(Vec2f, x));
     glUniformMatrix4fv(glGetUniformLocation(program_shadow, "PROJECTION"),
                        1,
                        FALSE,
@@ -660,8 +590,7 @@ i32 main(void) {
                                0);
     }
 
-    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) ==
-           GL_FRAMEBUFFER_COMPLETE);
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[0]);
@@ -672,8 +601,7 @@ i32 main(void) {
     glUniform1i(glGetUniformLocation(program_shadow, "MASK"), 1);
 
     const i32 uniform_blend = glGetUniformLocation(program_shadow, "BLEND");
-    glUniform1i(glGetUniformLocation(program_shadow, "MULTISAMPLES_SHADOW"),
-                MULTISAMPLES_SHADOW);
+    glUniform1i(glGetUniformLocation(program_shadow, "MULTISAMPLES_SHADOW"), MULTISAMPLES_SHADOW);
 
     Vec2f position = {WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f};
     Vec2f speed = {0};
@@ -694,8 +622,7 @@ i32 main(void) {
             elapsed += next - prev;
             prev = next;
             if (NANOS_PER_SECOND <= elapsed) {
-                const f64 nanoseconds_per_frame =
-                    ((f64)elapsed) / ((f64)frames);
+                const f64 nanoseconds_per_frame = ((f64)elapsed) / ((f64)frames);
                 printf("\033[6A"
                        "%9.0f ns/f\n"
                        "%9lu frames\n"
@@ -776,9 +703,7 @@ i32 main(void) {
                 {PLAYER_WIDTH, PLAYER_HEIGHT},
                 COLOR_OBJECT,
                 (VIEW_ROTATE_RADIANS -
-                 ((polar_degrees((Vec2f){look_to.x - look_from.x,
-                                         look_to.y - look_from.y}) *
-                   PI) /
+                 ((polar_degrees((Vec2f){look_to.x - look_from.x, look_to.y - look_from.y}) * PI) /
                   180.0f)) +
                     (PI / 2.0f),
             };
@@ -801,12 +726,8 @@ i32 main(void) {
 
 #define FOV_RADIANS ((70.0f * PI) / 180.0f)
         Vec2f target[2] = {
-            extend(look_from,
-                   turn(look_from, look_to, -(FOV_RADIANS / 2.0f)),
-                   WINDOW_DIAGONAL),
-            extend(look_from,
-                   turn(look_from, look_to, FOV_RADIANS / 2.0f),
-                   WINDOW_DIAGONAL),
+            extend(look_from, turn(look_from, look_to, -(FOV_RADIANS / 2.0f)), WINDOW_DIAGONAL),
+            extend(look_from, turn(look_from, look_to, FOV_RADIANS / 2.0f), WINDOW_DIAGONAL),
         };
 #undef FOV_RADIANS
 
@@ -847,28 +768,27 @@ i32 main(void) {
             }
         }
 
-#define LINE_BETWEEN(point)                                             \
-    do {                                                                \
-        f32 degrees = polar_degrees(                                    \
-            (Vec2f){(point).x - look_from.x, (point).y - look_from.y}); \
-        Bool inside = FALSE;                                            \
-        if ((fov[0] <= degrees) && (degrees <= fov[1])) {               \
-            inside |= TRUE;                                             \
-        }                                                               \
-        degrees -= 360.0f;                                              \
-        if ((fov[0] <= degrees) && (degrees <= fov[1])) {               \
-            inside |= TRUE;                                             \
-        }                                                               \
-        if (!inside) {                                                  \
-            break;                                                      \
-        }                                                               \
-        assert(len_lines < CAP_LINES);                                  \
-        lines[len_lines++] = (Geom){                                    \
-            (point),                                                    \
-            {look_from.x - ((point).x), look_from.y - (point).y},       \
-            COLOR_LINE_1,                                               \
-            0.0f,                                                       \
-        };                                                              \
+#define LINE_BETWEEN(point)                                                                      \
+    do {                                                                                         \
+        f32  degrees = polar_degrees((Vec2f){(point).x - look_from.x, (point).y - look_from.y}); \
+        Bool inside = FALSE;                                                                     \
+        if ((fov[0] <= degrees) && (degrees <= fov[1])) {                                        \
+            inside |= TRUE;                                                                      \
+        }                                                                                        \
+        degrees -= 360.0f;                                                                       \
+        if ((fov[0] <= degrees) && (degrees <= fov[1])) {                                        \
+            inside |= TRUE;                                                                      \
+        }                                                                                        \
+        if (!inside) {                                                                           \
+            break;                                                                               \
+        }                                                                                        \
+        assert(len_lines < CAP_LINES);                                                           \
+        lines[len_lines++] = (Geom){                                                             \
+            (point),                                                                             \
+            {look_from.x - ((point).x), look_from.y - (point).y},                                \
+            COLOR_LINE_1,                                                                        \
+            0.0f,                                                                                \
+        };                                                                                       \
     } while (FALSE)
 
         for (u32 i = 0; i < 4; ++i) {
@@ -888,13 +808,9 @@ i32 main(void) {
             assert((len_points + 2) < CAP_POINTS);
             points[len_points++] = lines[i].translate;
             points[len_points++] =
-                extend(look_from,
-                       turn(look_from, lines[i].translate, -EPSILON),
-                       WINDOW_DIAGONAL);
+                extend(look_from, turn(look_from, lines[i].translate, -EPSILON), WINDOW_DIAGONAL);
             points[len_points++] =
-                extend(look_from,
-                       turn(look_from, lines[i].translate, EPSILON),
-                       WINDOW_DIAGONAL);
+                extend(look_from, turn(look_from, lines[i].translate, EPSILON), WINDOW_DIAGONAL);
         }
 
         for (u32 i = 0; i < len_points; ++i) {
@@ -934,10 +850,9 @@ i32 main(void) {
         for (u32 i = 1; i < len_points; ++i) {
             for (u32 j = i; 0 < j; --j) {
                 f32 angle =
-                    polar_degrees((Vec2f){points[j].x - look_from.x,
-                                          points[j].y - look_from.y}) -
-                    polar_degrees((Vec2f){points[j - 1].x - look_from.x,
-                                          points[j - 1].y - look_from.y});
+                    polar_degrees((Vec2f){points[j].x - look_from.x, points[j].y - look_from.y}) -
+                    polar_degrees(
+                        (Vec2f){points[j - 1].x - look_from.x, points[j - 1].y - look_from.y});
                 if (angle < -180.0f) {
                     angle += 360.0f;
                 }
@@ -965,10 +880,10 @@ i32 main(void) {
         }
         for (u32 i = 0; i < len_triangles; ++i) {
             for (u32 j = 1; j < 3; ++j) {
-                const f32 x = triangles[i].points[j].translate.x -
-                              triangles[i].points[0].translate.x;
-                const f32 y = triangles[i].points[j].translate.y -
-                              triangles[i].points[0].translate.y;
+                const f32 x =
+                    triangles[i].points[j].translate.x - triangles[i].points[0].translate.x;
+                const f32 y =
+                    triangles[i].points[j].translate.y - triangles[i].points[0].translate.y;
                 f32 t = sqrtf((x * x) + (y * y)) / WINDOW_DIAGONAL;
                 if (1.0f < t) {
                     t = 1.0f;
@@ -986,10 +901,7 @@ i32 main(void) {
         glUseProgram(program_quad);
         glBindVertexArray(vao[1]);
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo[1]);
-        glBufferSubData(GL_ARRAY_BUFFER,
-                        0,
-                        sizeof(quads[0]) * len_quads,
-                        &quads[0]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quads[0]) * len_quads, &quads[0]);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (i32)len_quads);
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);

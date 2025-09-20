@@ -15,10 +15,8 @@ void main() {
     float s = sin(VERT_IN_ROTATE_RADIANS);
     float c = cos(VERT_IN_ROTATE_RADIANS);
 
-    vec2 position =
-        (VERT_IN_POSITION * VERT_IN_SCALE) - (VERT_IN_SCALE / 2.0f);
-    position = vec2((position.x * c) + (position.y * s),
-                    (position.x * -s) + (position.y * c));
+    vec2 position = (VERT_IN_POSITION * VERT_IN_SCALE) - (VERT_IN_SCALE / 2.0f);
+    position = vec2((position.x * c) + (position.y * s), (position.x * -s) + (position.y * c));
     position += (VERT_IN_SCALE / 2.0f) + VERT_IN_TRANSLATE;
 
     gl_Position = PROJECTION * VIEW * vec4(position, 0.0f, 1.0f);
