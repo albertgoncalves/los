@@ -95,7 +95,7 @@ typedef struct {
         }                          \
     } while (FALSE)
 
-#define PI  3.14159274f
+#define PI  ((f32)M_PI)
 #define TAU (PI * 2.0f)
 
 #define EPSILON 0.00001f
@@ -110,7 +110,9 @@ typedef struct {
     #define WINDOW_DIAGONAL 1718
 #endif
 
-#define MULTISAMPLES 16
+#define MULTISAMPLES_WINDOW  16
+#define MULTISAMPLES_TEXTURE 16
+#define MULTISAMPLES_SHADOW  16
 
 #define VIEW_NEAR -1.0f
 #define VIEW_FAR  1.0f
@@ -504,7 +506,7 @@ i32 main(void) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, FALSE);
-    glfwWindowHint(GLFW_SAMPLES, MULTISAMPLES);
+    glfwWindowHint(GLFW_SAMPLES, MULTISAMPLES_WINDOW);
     GLFWwindow* window =
         glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, __FILE__, NULL, NULL);
     EXIT_IF(!window);
@@ -664,7 +666,7 @@ i32 main(void) {
     for (u32 i = 0; i < CAP_TEXTURES; ++i) {
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textures[i]);
         glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
-                                MULTISAMPLES,
+                                MULTISAMPLES_TEXTURE,
                                 GL_RGBA8,
                                 WINDOW_WIDTH,
                                 WINDOW_HEIGHT,
@@ -694,8 +696,8 @@ i32 main(void) {
     glUniform1i(glGetUniformLocation(program_shadow, "MASK"), 1);
 
     const i32 uniform_blend = glGetUniformLocation(program_shadow, "BLEND");
-    glUniform1i(glGetUniformLocation(program_shadow, "MULTISAMPLES"),
-                MULTISAMPLES);
+    glUniform1i(glGetUniformLocation(program_shadow, "MULTISAMPLES_SHADOW"),
+                MULTISAMPLES_SHADOW);
 
     Vec2f position = {WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f};
     Vec2f speed = {0};

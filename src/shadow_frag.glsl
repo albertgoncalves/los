@@ -8,15 +8,15 @@ uniform sampler2DMS TEXTURE;
 uniform sampler2DMS MASK;
 
 uniform float BLEND;
-uniform int   MULTISAMPLES;
+uniform int   MULTISAMPLES_SHADOW;
 
 // NOTE: See `https://stackoverflow.com/a/42882506`.
 vec4 texture_multisample(sampler2DMS sampler, ivec2 coord) {
     vec4 color = vec4(0.0);
-    for (int i = 0; i < MULTISAMPLES; ++i) {
+    for (int i = 0; i < MULTISAMPLES_SHADOW; ++i) {
         color += texelFetch(sampler, coord, i);
     }
-    color /= float(MULTISAMPLES);
+    color /= float(MULTISAMPLES_SHADOW);
     return color;
 }
 
