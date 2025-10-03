@@ -5,11 +5,13 @@ CFLAGS = \
 	-ferror-limit=1 \
 	-fsanitize=bounds \
 	-fsanitize=float-divide-by-zero \
+	-fsanitize-ignorelist=ignorelist.txt \
 	-fsanitize=implicit-conversion \
 	-fsanitize=integer \
 	-fsanitize=nullability \
 	-fsanitize=undefined \
 	-fshort-enums \
+	-g \
 	-lGL \
 	-lglfw \
 	-lm \

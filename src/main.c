@@ -311,19 +311,19 @@ static void callback_glfw_key(GLFWwindow* window, i32 key, i32, i32 action, i32)
     }
 }
 
-__attribute__((noreturn)) static void callback_gl_debug(u32,
-                                                        u32,
-                                                        u32,
-                                                        u32,
+__attribute__((noreturn)) static void callback_gl_debug(u32         source,
+                                                        u32         type,
+                                                        u32         id,
+                                                        u32         severity,
                                                         i32         length,
                                                         const char* message,
                                                         const void*) {
     fflush(stdout);
     fflush(stderr);
     if (0 < length) {
-        fprintf(stderr, "%.*s", length, message);
+        fprintf(stderr, "(%u, %u, %u, %u) %.*s", source, type, id, severity, length, message);
     } else {
-        fprintf(stderr, "%s", message);
+        fprintf(stderr, "(%u, %u, %u, %u) %s", source, type, id, severity, message);
     }
     assert(0);
 }
@@ -342,7 +342,7 @@ static void compile_shader(const char* path, u32 shader) {
     assert(address != MAP_FAILED);
 
     {
-#define CAP_BUFFER (1 << 10)
+#define CAP_BUFFER (1 << 11)
         assert(len <= CAP_BUFFER);
         char buffer[CAP_BUFFER];
         memcpy(buffer, address, len);
@@ -449,6 +449,12 @@ i32 main(void) {
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(callback_gl_debug, NULL);
+    glDebugMessageControl(GL_DONT_CARE,
+                          GL_DONT_CARE,
+                          GL_DEBUG_SEVERITY_NOTIFICATION,
+                          0,
+                          NULL,
+                          FALSE);
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glClearColor(COLOR_BACKGROUND.x, COLOR_BACKGROUND.y, COLOR_BACKGROUND.z, COLOR_BACKGROUND.w);

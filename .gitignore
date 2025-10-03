@@ -4,6 +4,7 @@
 !.shellhook
 !README.md
 !.clang-format
+!ignorelist.txt
 
 !Makefile
 
